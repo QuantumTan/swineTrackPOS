@@ -10,8 +10,7 @@
                 <div class="empty-state-icon">
                     <i class="bi bi-file-earmark-text"></i>
                 </div>
-                <h3 class="section-title mb-2">Reports Module Coming Soon</h3>
-                <p class="section-subtitle mb-0">This area is reserved for future analytics, exports, and reporting tools.</p>
+                <h3 class="section-title mb-2">Reports placeholder</h3>
             </div>
         </div>
     </section>

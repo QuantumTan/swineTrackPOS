@@ -10,8 +10,7 @@
                 <div class="empty-state-icon">
                     <i class="bi bi-grid-1x2"></i>
                 </div>
-                <h3 class="section-title mb-2">Dashboard Coming Soon</h3>
-                <p class="section-subtitle mb-0">The dashboard layout is reserved and ready for future content.</p>
+                <h3 class="section-title mb-2">Dashboard placeholder..</h3>
             </div>
         </div>
     </section>

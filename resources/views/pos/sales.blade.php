@@ -10,8 +10,7 @@
                 <div class="empty-state-icon">
                     <i class="bi bi-cart3"></i>
                 </div>
-                <h3 class="section-title mb-2">Sales Module Coming Soon</h3>
-                <p class="section-subtitle mb-0">The POS workspace is reserved for future cashier and checkout flows.</p>
+                <h3 class="section-title mb-2">Sales placeholder....</h3>
             </div>
         </div>
     </section>
