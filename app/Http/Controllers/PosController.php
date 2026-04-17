@@ -46,13 +46,6 @@ class PosController extends Controller
         ]);
     }
 
-    public function suppliers(): View
-    {
-        return view('pos.suppliers', [
-            'suppliers' => [],
-        ]);
-    }
-
     public function inventory(): View
     {
         return view('pos.inventory', [
