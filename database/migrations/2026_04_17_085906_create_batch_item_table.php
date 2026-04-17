@@ -4,7 +4,6 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-
 return new class extends Migration
 {
     /**
@@ -12,16 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sale_item', function (Blueprint $table) {
-            $table->increments('sale_item_id');
-            $table->unsignedInteger('sale_id');
+        Schema::create('batch_item', function (Blueprint $table) {
+            $table->increments('batch_item_id');
+            $table->unsignedInteger('batch_id');
             $table->unsignedInteger('product_id');
-            $table->decimal('qty_sold_kg', 10, 3);
-            $table->decimal('price_per_kg', 10, 2);
+            $table->decimal('qty_in_kg', 10, 3);
+            $table->decimal('cost_per_kg', 10, 2);
 
-            $table->foreign('sale_id')
-                ->references('sale_id')
-                ->on('sale')
+            $table->foreign('batch_id')
+                ->references('batch_id')
+                ->on('batches')
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
 
@@ -32,16 +31,16 @@ return new class extends Migration
                 ->cascadeOnUpdate();
         });
 
-        DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_qty CHECK (qty_sold_kg > 0)');
-        DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_price CHECK (price_per_kg > 0)');
-    }
 
+        DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_qty CHECK (qty_in_kg > 0)');
+        DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_cost CHECK (cost_per_kg > 0)');
+    }
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('sale_item');
+        Schema::dropIfExists('batch_item');
     }
 };

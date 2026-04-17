@@ -12,8 +12,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sale', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->increments('sale_id');
+            $table->unsignedInteger('batch_id');
+            $table->unsignedInteger('user_id');
+            $table->dateTime('sale_date');
+
+            $table->foreign('batch_id')
+                ->references('batch_id')
+                ->on('batches')
+                ->restrictOnDelete()
+                ->cascadeOnUpdate();
+
+            $table->foreign('user_id')
+                ->references('user_id')
+                ->on('users')
+                ->restrictOnDelete()
+                ->cascadeOnUpdate();
         });
     }
 
