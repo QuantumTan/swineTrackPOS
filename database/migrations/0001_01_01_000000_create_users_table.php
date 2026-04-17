@@ -15,6 +15,7 @@ return new class extends Migration
             $table->increments('user_id');
             $table->string('user_email')->unique();
             $table->string('user_password');
+            $table->rememberToken();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
