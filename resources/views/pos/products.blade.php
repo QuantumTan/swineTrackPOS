@@ -7,36 +7,67 @@
         ),
     ])
 
-    <div class="collapse mb-4" id="productCreatePanel">
+    @if (session('status'))
+        <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">{{ session('status') }}</div>
+    @endif
+
+    @if ($errors->has('product_delete'))
+        <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('product_delete') }}</div>
+    @endif
+
+    <div class="collapse mb-4 {{ $errors->any() ? 'show' : '' }}" id="productCreatePanel">
         @component('pos.partials.panel-card', [
             'title' => 'Add New Product',
             'subtitle' => 'Keep catalog details complete and pricing accurate.',
             'dismissLabel' => 'Close product form',
             'dismissTarget' => 'productCreatePanel',
         ])
-            <form class="d-grid gap-4">
+            <form class="d-grid gap-4" method="POST" action="{{ route('products.store') }}">
+                @csrf
+
                 <div class="row g-3">
                     <div class="col-12 col-lg-6">
                         <label class="form-label fw-semibold">Product Name</label>
-                        <input type="text" class="form-control">
+                        <input
+                            type="text"
+                            name="product_name"
+                            class="form-control @error('product_name') is-invalid @enderror"
+                            value="{{ old('product_name') }}"
+                        >
+                        @error('product_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="col-12 col-lg-6">
                         <label class="form-label fw-semibold">Category</label>
-                        <select class="form-select">
+                        <select name="product_category" class="form-select @error('product_category') is-invalid @enderror">
                             <option selected>Select category</option>
                             @foreach ($categories as $category)
-                                <option>{{ $category }}</option>
+                                <option @selected(old('product_category') === $category)>{{ $category }}</option>
                             @endforeach
                         </select>
+                        @error('product_category')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="col-12 col-lg-6">
                         <label class="form-label fw-semibold">Price per kg (P)</label>
-                        <input type="number" class="form-control" placeholder="0.00">
+                        <input
+                            type="number"
+                            step="0.01"
+                            name="product_price_per_kilo"
+                            class="form-control @error('product_price_per_kilo') is-invalid @enderror"
+                            value="{{ old('product_price_per_kilo') }}"
+                            placeholder="0.00"
+                        >
+                        @error('product_price_per_kilo')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
 
                 <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-success px-4">Save</button>
+                    <button type="submit" class="btn btn-success px-4">Save</button>
                     <button type="button" class="btn btn-light border px-4" data-bs-toggle="collapse" data-bs-target="#productCreatePanel" aria-controls="productCreatePanel">Cancel</button>
                 </div>
             </form>
@@ -89,55 +120,62 @@
                 </tbody>
             </table>
         </div>
+
+        @if ($products->hasPages())
+            <div class="d-flex justify-content-end mt-3">
+                {{ $products->links('pagination::bootstrap-5') }}
+            </div>
+        @endif
     </div>
 
     @foreach ($products as $product)
         @component('pos.partials.modal', [
-            'id' => 'productEdit'.$loop->index,
+            'id' => 'productEdit'.$product['product_id'],
             'title' => 'Edit Product',
             'subtitle' => $product['id'].' | Update pricing and classification',
         ])
-            <form class="d-grid gap-3">
+            <form class="d-grid gap-3" method="POST" action="{{ route('products.update', $product['product_id']) }}">
+                @csrf
+                @method('PUT')
+
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product Name</label>
-                        <input type="text" class="form-control" value="{{ $product['name'] }}">
+                        <input type="text" name="product_name" class="form-control" value="{{ old('product_name', $product['name']) }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Category</label>
-                        <select class="form-select">
+                        <select name="product_category" class="form-select">
                             @foreach ($categories as $category)
-                                <option @selected($category === $product['category'])>{{ $category }}</option>
+                                <option @selected(old('product_category', $product['category']) === $category)>{{ $category }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Price per kg (P)</label>
-                        <input type="text" class="form-control" value="{{ str_replace('P', '', $product['price']) }}">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Current Stock</label>
-                        <input type="text" class="form-control" value="{{ $product['stock']['value'] }}">
+                        <input type="number" step="0.01" name="product_price_per_kilo" class="form-control" value="{{ old('product_price_per_kilo', $product['price_value']) }}">
                     </div>
                 </div>
                 <div class="d-flex justify-content-end gap-2 pt-2">
                     <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-success">Save Changes</button>
+                    <button type="submit" class="btn btn-success">Save Changes</button>
                 </div>
             </form>
         @endcomponent
 
         @component('pos.partials.modal', [
-            'id' => 'productDelete'.$loop->index,
+            'id' => 'productDelete'.$product['product_id'],
             'title' => 'Delete Product',
             'subtitle' => 'This removes the product from the catalog UI.',
             'size' => 'modal-md',
         ])
             <p class="text-secondary mb-4">Delete <span class="fw-semibold text-dark">{{ $product['name'] }}</span>? Existing inventory and sales references should be reviewed first.</p>
-            <div class="d-flex justify-content-end gap-2">
+            <form method="POST" action="{{ route('products.destroy', $product['product_id']) }}" class="d-flex justify-content-end gap-2">
+                @csrf
+                @method('DELETE')
                 <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger">Delete Product</button>
-            </div>
+                <button type="submit" class="btn btn-danger">Delete Product</button>
+            </form>
         @endcomponent
     @endforeach
 </x-app-layout>

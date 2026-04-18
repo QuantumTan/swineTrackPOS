@@ -4,6 +4,10 @@
         'subtitle' => 'Current stock levels',
     ])
 
+    @if (session('status'))
+        <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">{{ session('status') }}</div>
+    @endif
+
     <div class="row g-4 mb-4">
         @if (count($summary))
             @foreach ($summary as $card)
@@ -68,5 +72,11 @@
                 </tbody>
             </table>
         </div>
+
+        @if ($inventoryItems->hasPages())
+            <div class="d-flex justify-content-end mt-3">
+                {{ $inventoryItems->links('pagination::bootstrap-5') }}
+            </div>
+        @endif
     </section>
 </x-app-layout>
