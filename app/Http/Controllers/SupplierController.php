@@ -15,10 +15,17 @@ class SupplierController extends Controller
     {
         $suppliers = Supplier::query()
             ->orderBy('supplier_id')
-            ->get();
+            ->paginate(10);
 
         return view('pos.suppliers', [
             'suppliers' => $suppliers,
+            'supplierStats' => [
+                'total' => Supplier::query()->count(),
+                'with_phone' => Supplier::query()
+                    ->whereNotNull('supplier_phone_number')
+                    ->where('supplier_phone_number', '!=', '')
+                    ->count(),
+            ],
         ]);
     }
 
