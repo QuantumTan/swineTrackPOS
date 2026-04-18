@@ -49,10 +49,6 @@ class StockInController extends Controller
                     'label' => $batch->source_type,
                     'class' => $batch->source_type === 'Supplier' ? 'success' : 'info',
                 ],
-                'status' => [
-                    'label' => $batch->batch_status,
-                    'class' => $batch->batch_status === 'Open' ? 'warning' : ($batch->batch_status === 'Closed' ? 'secondary' : 'success'),
-                ],
                 'supplier_id' => $batch->supplier_id,
                 'supplier' => $batch->supplier?->supplier_name ?? 'N/A',
                 'items' => $items,
@@ -101,17 +97,6 @@ class StockInController extends Controller
 
     public function store(StoreStockInRequest $request): RedirectResponse
     {
-        $latestBatch = $this->latestBatch();
-
-        if ($latestBatch && $latestBatch->batch_status !== 'Sold Out') {
-            return redirect()
-                ->route('stock-ins.index')
-                ->withInput()
-                ->withErrors([
-                    'stock_in_create' => 'You can only record a new stock-in after the latest batch is marked Sold Out.',
-                ]);
-        }
-
         DB::transaction(function () use ($request) {
             $validated = $request->validated();
 
@@ -142,17 +127,6 @@ class StockInController extends Controller
 
     public function update(UpdateStockInRequest $request, Batch $batch): RedirectResponse
     {
-        $validated = $request->validated();
-        $latestBatch = $this->latestBatch();
-
-        if ($latestBatch && $latestBatch->batch_id !== $batch->batch_id && $validated['batch_status'] !== 'Sold Out') {
-            return redirect()
-                ->route('stock-ins.index')
-                ->withErrors([
-                    'stock_in_update' => 'Older batches must remain Sold Out once a newer stock-in record exists.',
-                ]);
-        }
-
         DB::transaction(function () use ($request, $batch) {
             $validated = $request->validated();
 
@@ -170,7 +144,6 @@ class StockInController extends Controller
                 'supplier_id' => $validated['supplier_id'] ?? null,
                 'batch_date' => Carbon::parse($validated['batch_date']),
                 'source_type' => $validated['source_type'],
-                'batch_status' => $validated['batch_status'],
             ]);
 
             $batch->items()->delete();
@@ -240,13 +213,5 @@ class StockInController extends Controller
         $inventory->current_stock_kg = max(0, round($currentStock + $delta, 3));
         $inventory->last_updated_at = now();
         $inventory->save();
-    }
-
-    private function latestBatch(): ?Batch
-    {
-        return Batch::query()
-            ->orderByDesc('batch_date')
-            ->orderByDesc('batch_id')
-            ->first();
     }
 }
