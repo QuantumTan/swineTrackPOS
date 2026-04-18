@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Inventory;
+use App\Models\Product;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class PosController extends Controller
@@ -48,9 +51,52 @@ class PosController extends Controller
 
     public function inventory(): View
     {
+        $inventoryRows = Product::query()
+            ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
+            ->select('product.*', 'inventory.current_stock_kg', 'inventory.last_updated_at')
+            ->orderBy('product.product_id')
+            ->paginate(10)
+            ->withQueryString();
+
+        $inventoryRows->through(function (Product $product) {
+                $stock = (float) ($product->current_stock_kg ?? 0);
+
+                return [
+                    'id' => 'P'.str_pad((string) $product->product_id, 3, '0', STR_PAD_LEFT),
+                    'name' => $product->product_name,
+                    'category' => $product->product_category,
+                    'stock' => number_format($stock, 3).' kg',
+                    'status' => [
+                        'label' => $stock <= 0 ? 'Out of Stock' : ($stock < 20 ? 'Low Stock' : 'In Stock'),
+                        'class' => $stock <= 0 ? 'danger' : ($stock < 20 ? 'warning' : 'success'),
+                    ],
+                    'updated' => $product->last_updated_at
+                        ? Carbon::parse($product->last_updated_at)->format('d M Y, h:i A')
+                        : '-',
+                ];
+            });
+
+        $allInventoryRows = Product::query()
+            ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
+            ->select('product.product_id', 'inventory.current_stock_kg')
+            ->get();
+
         return view('pos.inventory', [
-            'inventoryItems' => [],
-            'summary' => [],
+            'inventoryItems' => $inventoryRows,
+            'summary' => [
+                [
+                    'label' => 'Total Products',
+                    'value' => $allInventoryRows->count(),
+                ],
+                [
+                    'label' => 'In Stock',
+                    'value' => $allInventoryRows->filter(fn ($row) => (float) ($row->current_stock_kg ?? 0) > 0)->count(),
+                ],
+                [
+                    'label' => 'Low Stock / Out',
+                    'value' => $allInventoryRows->filter(fn ($row) => (float) ($row->current_stock_kg ?? 0) <= 0)->count(),
+                ],
+            ],
         ]);
     }
 

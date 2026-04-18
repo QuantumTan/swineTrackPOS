@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StockInController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -17,10 +19,22 @@ Route::middleware('auth')->group(function () {
     Route::controller(PosController::class)->group(function () {
         Route::get('/dashboard', 'dashboard')->name('dashboard');
         Route::get('/sales', 'sales')->name('sales.index');
-        Route::get('/stock-ins', 'stockIns')->name('stock-ins.index');
-        Route::get('/products', 'products')->name('products.index');
         Route::get('/inventory', 'inventory')->name('inventory.index');
         Route::get('/reports', 'reports')->name('reports.index');
+    });
+
+    Route::controller(ProductController::class)->prefix('products')->name('products.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{product}', 'update')->name('update');
+        Route::delete('/{product}', 'destroy')->name('destroy');
+    });
+
+    Route::controller(StockInController::class)->prefix('stock-ins')->name('stock-ins.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{batch}', 'update')->name('update');
+        Route::delete('/{batch}', 'destroy')->name('destroy');
     });
 
     Route::controller(SupplierController::class)->prefix('suppliers')->name('suppliers.')->group(function () {
