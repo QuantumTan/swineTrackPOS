@@ -27,7 +27,9 @@ return new class extends Migration
         });
 
       
+        if (DB::getDriverName() !== 'sqlite') {
             DB::statement('ALTER TABLE inventory ADD CONSTRAINT chk_inventory_stock CHECK (current_stock_kg >= 0)');
+        }
 
     }
 
