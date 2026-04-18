@@ -14,6 +14,14 @@
         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_delete') }}</div>
     @endif
 
+    @if ($errors->has('stock_in_create'))
+        <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_create') }}</div>
+    @endif
+
+    @if ($errors->has('stock_in_update'))
+        <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_update') }}</div>
+    @endif
+
     <div class="row g-4 mb-4">
         @if (count($summary))
             @foreach ($summary as $card)
@@ -71,14 +79,8 @@
                     </div>
                     <div class="col-12 col-lg-6">
                         <label class="form-label fw-semibold">Status</label>
-                        <select name="batch_status" class="form-select @error('batch_status') is-invalid @enderror">
-                            <option value="Open" @selected(old('batch_status', 'Open') === 'Open')>Open</option>
-                            <option value="Sold Out" @selected(old('batch_status') === 'Sold Out')>Sold Out</option>
-                            <option value="Closed" @selected(old('batch_status') === 'Closed')>Closed</option>
-                        </select>
-                        @error('batch_status')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <input type="text" class="form-control" value="Open" readonly>
+                        <div class="form-text">New stock-in records always start as Open. Mark the latest batch as Sold Out before creating another one.</div>
                     </div>
                     <div class="col-12" data-supplier-field>
                         <label class="form-label fw-semibold">Supplier</label>
@@ -196,6 +198,7 @@
                         <th>Stock-In ID</th>
                         <th>Date</th>
                         <th>Source Type</th>
+                        <th>Status</th>
                         <th>Supplier</th>
                         <th>Total Cost</th>
                         <th class="text-center">Actions</th>
@@ -212,6 +215,12 @@
                                     'type' => $stockIn['source']['class'],
                                 ])
                             </td>
+                            <td>
+                                @include('pos.partials.status-pill', [
+                                    'label' => $stockIn['status']['label'],
+                                    'type' => $stockIn['status']['class'],
+                                ])
+                            </td>
                             <td>{{ $stockIn['supplier'] }}</td>
                             <td class="fw-semibold">{{ $stockIn['total'] }}</td>
                             <td class="text-center">
@@ -224,7 +233,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="table-empty">No stock-in records yet.</td>
+                            <td colspan="7" class="table-empty">No stock-in records yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

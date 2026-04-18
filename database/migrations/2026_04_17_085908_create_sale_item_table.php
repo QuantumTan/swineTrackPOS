@@ -5,6 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
+
 return new class extends Migration
 {
     /**
@@ -32,8 +33,10 @@ return new class extends Migration
                 ->cascadeOnUpdate();
         });
 
-        DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_qty CHECK (qty_sold_kg > 0)');
-        DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_price CHECK (price_per_kg > 0)');
+     
+            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_qty CHECK (qty_sold_kg > 0)');
+            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_price CHECK (price_per_kg > 0)');
+
     }
 
 

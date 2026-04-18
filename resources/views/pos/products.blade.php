@@ -107,8 +107,8 @@
                             </td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
-                                    'edit' => 'productEdit'.$loop->index,
-                                    'delete' => 'productDelete'.$loop->index,
+                                    'edit' => 'productEdit'.$product['product_id'],
+                                    'delete' => 'productDelete'.$product['product_id'],
                                 ])
                             </td>
                         </tr>
