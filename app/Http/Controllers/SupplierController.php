@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Supplier\StoreSupplierRequest;
+use App\Http\Requests\Supplier\UpdateSupplierRequest;
 use App\Models\Supplier;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class SupplierController extends Controller
@@ -21,28 +22,18 @@ class SupplierController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreSupplierRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'supplier_name' => ['required', 'string', 'max:100'],
-            'supplier_phone_number' => ['nullable', 'string', 'max:15'],
-        ]);
-
-        Supplier::create($validated);
+        Supplier::create($request->validated());
 
         return redirect()
             ->route('suppliers.index')
             ->with('status', 'Supplier added successfully.');
     }
 
-    public function update(Request $request, Supplier $supplier): RedirectResponse
+    public function update(UpdateSupplierRequest $request, Supplier $supplier): RedirectResponse
     {
-        $validated = $request->validate([
-            'supplier_name' => ['required', 'string', 'max:100'],
-            'supplier_phone_number' => ['nullable', 'string', 'max:15'],
-        ]);
-
-        $supplier->update($validated);
+        $supplier->update($request->validated());
 
         return redirect()
             ->route('suppliers.index')
