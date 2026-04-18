@@ -1,6 +1,6 @@
-<x-app-layout pageTitle="Dashboard">
+<x-app-layout pageTitle="Reports">
     @include('pos.partials.page-header', [
-        'title' => 'Dashboard',
+        'title' => 'Reports',
         'subtitle' => 'This module is intentionally blank for now.',
     ])
 
@@ -8,9 +8,9 @@
         <div class="p-4 p-lg-5">
             <div class="empty-state">
                 <div class="empty-state-icon">
-                    <i class="bi bi-grid-1x2"></i>
+                    <i class="bi bi-file-earmark-text"></i>
                 </div>
-                <h3 class="section-title mb-2">Dashboard placeholder..</h3>
+                <h3 class="section-title mb-2">Reports placeholder</h3>
             </div>
         </div>
     </section>
