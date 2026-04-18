@@ -63,8 +63,8 @@
 
     <div class="content-card">
         <div class="toolbar-row">
-            <div class="toolbar-chip"><i class="bi bi-truck me-2"></i>{{ $suppliers->count() }} active suppliers</div>
-            <div class="toolbar-chip"><i class="bi bi-telephone me-2"></i>{{ $suppliers->whereNotNull('supplier_phone_number')->where('supplier_phone_number', '!=', '')->count() }} contact numbers saved</div>
+            <div class="toolbar-chip"><i class="bi bi-truck me-2"></i>{{ $supplierStats['total'] }} active suppliers</div>
+            <div class="toolbar-chip"><i class="bi bi-telephone me-2"></i>{{ $supplierStats['with_phone'] }} contact numbers saved</div>
         </div>
 
         <div class="table-responsive">
@@ -98,6 +98,15 @@
                 </tbody>
             </table>
         </div>
+
+        @if ($suppliers->hasPages())
+            <div class="px-4 pb-4 pt-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="text-secondary small">
+                    Showing {{ $suppliers->firstItem() }} to {{ $suppliers->lastItem() }} of {{ $suppliers->total() }} suppliers
+                </div>
+                {{ $suppliers->links('pagination::bootstrap-5') }}
+            </div>
+        @endif
     </div>
 
     @foreach ($suppliers as $supplier)
