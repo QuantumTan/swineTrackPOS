@@ -14,6 +14,10 @@
         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_delete') }}</div>
     @endif
 
+    @if ($errors->has('stock_in_create'))
+        <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_create') }}</div>
+    @endif
+
     <div class="row g-4 mb-4">
         @if (count($summary))
             @foreach ($summary as $card)
@@ -161,6 +165,10 @@
                 </div>
 
                 <div class="panel-divider"></div>
+
+                @if ($errors->has('stock_in_create'))
+                    <div class="text-danger small">{{ $errors->first('stock_in_create') }}</div>
+                @endif
 
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-success px-4">Save Stock-In</button>

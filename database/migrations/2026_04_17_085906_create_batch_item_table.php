@@ -34,8 +34,10 @@ return new class extends Migration
 
 
    
+        if (DB::getDriverName() !== 'sqlite') {
             DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_qty CHECK (qty_in_kg > 0)');
             DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_cost CHECK (cost_per_kg > 0)');
+        }
 
     }
 

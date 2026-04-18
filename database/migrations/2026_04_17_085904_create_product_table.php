@@ -21,7 +21,9 @@ return new class extends Migration
             $table->decimal('product_price_per_kilo', 10, 2);
         });
 
-        DB::statement('ALTER TABLE product ADD CONSTRAINT chk_product_price CHECK (product_price_per_kilo > 0)');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE product ADD CONSTRAINT chk_product_price CHECK (product_price_per_kilo > 0)');
+        }
     }
 
     /**
