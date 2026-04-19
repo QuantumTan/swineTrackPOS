@@ -20,7 +20,13 @@ class UpdateStockInRequest extends FormRequest
         return [
             'batch_date' => ['required', 'date'],
             'source_type' => ['required', Rule::in(['Supplier', 'Own Livestock'])],
-            'supplier_id' => ['nullable', 'integer', 'exists:supplier,supplier_id'],
+            'supplier_id' => [
+                Rule::requiredIf(fn (): bool => $this->input('source_type') === 'Supplier'),
+                Rule::prohibitedIf(fn (): bool => $this->input('source_type') !== 'Supplier'),
+                'nullable',
+                'integer',
+                'exists:supplier,supplier_id',
+            ],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:product,product_id'],
             'items.*.qty_in_kg' => ['required', 'numeric', 'min:0.001'],

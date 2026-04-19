@@ -4,6 +4,19 @@ use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\User;
 
+test('creating a product automatically creates its inventory record', function () {
+    $product = Product::create([
+        'product_name' => 'Pork Jowl',
+        'product_category' => 'Premium Cuts',
+        'product_price_per_kilo' => 295.00,
+    ]);
+
+    $inventory = Inventory::query()->where('product_id', $product->product_id)->first();
+
+    expect($inventory)->not->toBeNull()
+        ->and((float) $inventory->current_stock_kg)->toBe(0.0);
+});
+
 test('authenticated users can update a product', function () {
     $user = User::factory()->create();
 
@@ -13,8 +26,7 @@ test('authenticated users can update a product', function () {
         'product_price_per_kilo' => 320.00,
     ]);
 
-    Inventory::create([
-        'product_id' => $product->product_id,
+    $product->inventory()->update([
         'current_stock_kg' => 12.500,
         'last_updated_at' => now(),
     ]);
@@ -47,8 +59,7 @@ test('authenticated users can delete a product and its inventory record', functi
         'product_price_per_kilo' => 280.00,
     ]);
 
-    Inventory::create([
-        'product_id' => $product->product_id,
+    $product->inventory()->update([
         'current_stock_kg' => 0,
         'last_updated_at' => now(),
     ]);
@@ -79,8 +90,7 @@ test('products page wires edit and delete actions to product-specific modals', f
         'product_price_per_kilo' => 230.00,
     ]);
 
-    Inventory::create([
-        'product_id' => $product->product_id,
+    $product->inventory()->update([
         'current_stock_kg' => 8.750,
         'last_updated_at' => now(),
     ]);

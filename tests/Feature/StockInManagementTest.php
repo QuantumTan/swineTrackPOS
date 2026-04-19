@@ -93,7 +93,8 @@ test('cannot create a new stock-in while the first batch is not sold out', funct
         ]);
 
     expect(Batch::query()->count())->toBe(1)
-        ->and(Inventory::query()->count())->toBe(0);
+        ->and(Inventory::query()->count())->toBe(1)
+        ->and((float) Inventory::query()->first()->current_stock_kg)->toBe(0.0);
 });
 
 test('can create a new stock-in after the first batch is sold out', function () {
@@ -192,8 +193,7 @@ test('updating a stock-in record recalculates inventory by product delta', funct
         'product_price_per_kilo' => 250.00,
     ]);
 
-    Inventory::create([
-        'product_id' => $productA->product_id,
+    $productA->inventory()->update([
         'current_stock_kg' => 10.000,
         'last_updated_at' => now(),
     ]);
@@ -258,8 +258,7 @@ test('deleting a stock-in record removes its quantities from inventory', functio
         'product_price_per_kilo' => 280.00,
     ]);
 
-    Inventory::create([
-        'product_id' => $product->product_id,
+    $product->inventory()->update([
         'current_stock_kg' => 6.000,
         'last_updated_at' => now(),
     ]);
@@ -295,4 +294,34 @@ test('deleting a stock-in record removes its quantities from inventory', functio
     $this->assertDatabaseMissing('batches', [
         'batch_id' => $batch->batch_id,
     ]);
+});
+
+test('supplier source stock-in requires a supplier link', function () {
+    $user = User::factory()->create();
+    $product = Product::create([
+        'product_name' => 'Pork Ham',
+        'product_category' => 'Premium Cuts',
+        'product_price_per_kilo' => 300.00,
+    ]);
+
+    $response = $this
+        ->from(route('stock-ins.index'))
+        ->actingAs($user)
+        ->post(route('stock-ins.store'), [
+            'batch_date' => now()->format('Y-m-d H:i:s'),
+            'source_type' => 'Supplier',
+            'items' => [
+                [
+                    'product_id' => $product->product_id,
+                    'qty_in_kg' => 3.500,
+                    'cost_per_kg' => 210.00,
+                ],
+            ],
+        ]);
+
+    $response
+        ->assertRedirect(route('stock-ins.index'))
+        ->assertSessionHasErrors('supplier_id');
+
+    expect(Batch::query()->count())->toBe(0);
 });

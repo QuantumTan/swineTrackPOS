@@ -7,34 +7,32 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Batch extends Model
+class Sale extends Model
 {
     use HasFactory;
 
-    protected $table = 'batches';
+    protected $table = 'sale';
 
-    protected $primaryKey = 'batch_id';
+    protected $primaryKey = 'sale_id';
 
     public $timestamps = false;
 
     protected $fillable = [
-        'supplier_id',
+        'batch_id',
         'user_id',
-        'batch_date',
-        'source_type',
-        'batch_status',
+        'sale_date',
     ];
 
     protected function casts(): array
     {
         return [
-            'batch_date' => 'datetime',
+            'sale_date' => 'datetime',
         ];
     }
 
-    public function supplier(): BelongsTo
+    public function batch(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id');
+        return $this->belongsTo(Batch::class, 'batch_id', 'batch_id');
     }
 
     public function user(): BelongsTo
@@ -44,11 +42,6 @@ class Batch extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(BatchItem::class, 'batch_id', 'batch_id');
-    }
-
-    public function sales(): HasMany
-    {
-        return $this->hasMany(Sale::class, 'batch_id', 'batch_id');
+        return $this->hasMany(SaleItem::class, 'sale_id', 'sale_id');
     }
 }
