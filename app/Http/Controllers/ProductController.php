@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\Inventory;
 use App\Models\Product;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
