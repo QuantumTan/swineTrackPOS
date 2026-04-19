@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -58,5 +59,15 @@ class User extends Authenticatable
     public function getEmailForPasswordReset(): string
     {
         return $this->user_email;
+    }
+
+    public function batches(): HasMany
+    {
+        return $this->hasMany(Batch::class, 'user_id', 'user_id');
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class, 'user_id', 'user_id');
     }
 }

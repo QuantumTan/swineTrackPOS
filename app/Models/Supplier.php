@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Supplier extends Model
 {
@@ -19,4 +20,9 @@ class Supplier extends Model
         'supplier_name',
         'supplier_phone_number',
     ];
+
+    public function batches(): HasMany
+    {
+        return $this->hasMany(Batch::class, 'supplier_id', 'supplier_id');
+    }
 }

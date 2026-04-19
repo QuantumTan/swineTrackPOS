@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
-use App\Models\Inventory;
 use App\Models\Product;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -57,15 +56,7 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request): RedirectResponse
     {
-        DB::transaction(function () use ($request) {
-            $product = Product::create($request->validated());
-
-            Inventory::create([
-                'product_id' => $product->product_id,
-                'current_stock_kg' => 0,
-                'last_updated_at' => now(),
-            ]);
-        });
+        Product::create($request->validated());
 
         return redirect()
             ->route('products.index')
