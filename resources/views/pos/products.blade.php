@@ -76,8 +76,8 @@
 
     <div class="content-card">
         <div class="toolbar-row">
-            <div class="toolbar-chip"><i class="bi bi-grid me-2"></i>{{ count($products) }} total products</div>
-            <div class="toolbar-chip"><i class="bi bi-exclamation-circle me-2"></i>Catalog ready for live product data</div>
+            <div class="toolbar-chip"><i class="bi bi-grid me-2"></i>{{ $products->total() }} total products</div>
+            <div class="toolbar-chip"><i class="bi bi-box-seam me-2"></i>Stock quantity and status are both visible below</div>
         </div>
 
         <div class="table-responsive">
@@ -89,6 +89,8 @@
                         <th>Category</th>
                         <th>Price per kg</th>
                         <th>Current Stock</th>
+                        <th>Stock Status</th>
+                        <th>Last Updated</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -99,12 +101,14 @@
                             <td class="fw-semibold">{{ $product['name'] }}</td>
                             <td>{{ $product['category'] }}</td>
                             <td class="fw-semibold">{{ $product['price'] }}</td>
+                            <td class="fw-semibold">{{ $product['stock'] }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
-                                    'label' => $product['stock']['value'],
-                                    'type' => $product['stock']['class'],
+                                    'label' => $product['status']['label'],
+                                    'type' => $product['status']['class'],
                                 ])
                             </td>
+                            <td>{{ $product['updated'] }}</td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
                                     'edit' => 'productEdit'.$product['product_id'],
@@ -114,7 +118,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="table-empty">No products available yet.</td>
+                            <td colspan="8" class="table-empty">No products available yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

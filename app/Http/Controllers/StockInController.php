@@ -95,6 +95,9 @@ class StockInController extends Controller
             'supplier' => $batch->supplier?->supplier_name ?? 'N/A',
             'items' => $items,
             'primary_item' => $items->first(),
+            'item_count' => $items->count(),
+            'total_qty_value' => (float) $items->sum('qty'),
+            'total_qty' => number_format((float) $items->sum('qty'), 3).' kg',
             'total_value' => $totalCost,
             'total' => 'P'.number_format($totalCost, 2),
         ];
