@@ -14,6 +14,8 @@ class SupplierController extends Controller
     public function index(): View
     {
         $suppliers = Supplier::query()
+            ->withCount('batches')
+            ->withMax('batches', 'batch_date')
             ->orderBy('supplier_id')
             ->paginate(10);
 
@@ -24,6 +26,9 @@ class SupplierController extends Controller
                 'with_phone' => Supplier::query()
                     ->whereNotNull('supplier_phone_number')
                     ->where('supplier_phone_number', '!=', '')
+                    ->count(),
+                'with_delivery_history' => Supplier::query()
+                    ->whereHas('batches')
                     ->count(),
             ],
         ]);

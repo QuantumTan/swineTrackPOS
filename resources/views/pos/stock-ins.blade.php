@@ -194,6 +194,8 @@
                         <th>Date</th>
                         <th>Source Type</th>
                         <th>Supplier</th>
+                        <th>Items</th>
+                        <th>Total Qty</th>
                         <th>Total Cost</th>
                         <th class="text-center">Actions</th>
                     </tr>
@@ -210,6 +212,8 @@
                                 ])
                             </td>
                             <td>{{ $stockIn['supplier'] }}</td>
+                            <td>{{ $stockIn['item_count'] }}</td>
+                            <td class="fw-semibold">{{ $stockIn['total_qty'] }}</td>
                             <td class="fw-semibold">{{ $stockIn['total'] }}</td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
@@ -221,7 +225,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="table-empty">No stock-in records yet.</td>
+                            <td colspan="8" class="table-empty">No stock-in records yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -256,6 +260,10 @@
                 <div class="col-md-6">
                     <div class="modal-detail-label">Total Cost</div>
                     <div class="fw-semibold">{{ $stockIn['total'] }}</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="modal-detail-label">Items Received</div>
+                    <div class="fw-semibold">{{ $stockIn['item_count'] }} item{{ $stockIn['item_count'] === 1 ? '' : 's' }} / {{ $stockIn['total_qty'] }}</div>
                 </div>
                 <div class="col-12">
                     <div class="modal-detail-label">Items</div>

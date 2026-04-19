@@ -65,6 +65,7 @@
         <div class="toolbar-row">
             <div class="toolbar-chip"><i class="bi bi-truck me-2"></i>{{ $supplierStats['total'] }} active suppliers</div>
             <div class="toolbar-chip"><i class="bi bi-telephone me-2"></i>{{ $supplierStats['with_phone'] }} contact numbers saved</div>
+            <div class="toolbar-chip"><i class="bi bi-box-arrow-in-down me-2"></i>{{ $supplierStats['with_delivery_history'] }} suppliers with delivery history</div>
         </div>
 
         <div class="table-responsive">
@@ -74,6 +75,8 @@
                         <th>Supplier ID</th>
                         <th>Supplier Name</th>
                         <th>Contact Number</th>
+                        <th>Deliveries</th>
+                        <th>Last Delivery</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -83,6 +86,10 @@
                             <td class="text-secondary">S{{ str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT) }}</td>
                             <td class="fw-semibold">{{ $supplier->supplier_name }}</td>
                             <td>{{ $supplier->supplier_phone_number ?: '-' }}</td>
+                            <td>{{ $supplier->batches_count }}</td>
+                            <td>
+                                {{ $supplier->batches_max_batch_date ? \Illuminate\Support\Carbon::parse($supplier->batches_max_batch_date)->format('d M Y, h:i A') : '-' }}
+                            </td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
                                     'edit' => 'supplierEdit'.$supplier->supplier_id,
@@ -92,7 +99,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="table-empty">No suppliers added yet.</td>
+                            <td colspan="6" class="table-empty">No suppliers added yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

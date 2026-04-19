@@ -14,6 +14,8 @@ use Illuminate\View\View;
 
 class ProductController extends Controller
 {
+    private const LOW_STOCK_THRESHOLD = 20;
+
     /**
      * Display a listing of the resource.
      */
@@ -36,9 +38,10 @@ class ProductController extends Controller
                     'category' => $product->product_category,
                     'price_value' => (float) $product->product_price_per_kilo,
                     'price' => 'P'.number_format((float) $product->product_price_per_kilo, 2),
-                    'stock' => [
-                        'value' => number_format($stock, 3).' kg',
-                        'class' => $stock <= 0 ? 'danger' : ($stock < 20 ? 'warning' : 'success'),
+                    'stock' => number_format($stock, 3).' kg',
+                    'status' => [
+                        'label' => $stock <= 0 ? 'Out of Stock' : ($stock < self::LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'),
+                        'class' => $stock <= 0 ? 'danger' : ($stock < self::LOW_STOCK_THRESHOLD ? 'warning' : 'success'),
                     ],
                     'updated' => $product->last_updated_at
                         ? Carbon::parse($product->last_updated_at)->format('d M Y, h:i A')

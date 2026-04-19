@@ -47,6 +47,7 @@
                         <th>Current Stock</th>
                         <th>Stock Status</th>
                         <th>Last Updated</th>
+                        <th>Latest Stock-In Supplier</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,10 +64,11 @@
                                 ])
                             </td>
                             <td>{{ $item['updated'] }}</td>
+                            <td>{{ $item['latest_supplier'] }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="table-empty">No inventory records available yet.</td>
+                            <td colspan="7" class="table-empty">No inventory records available yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
