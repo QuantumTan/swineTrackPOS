@@ -8,11 +8,11 @@
                             <i class="bi bi-shop"></i>
                         </div>
                         <h1 class="login-title mb-1">SwineTrack POS</h1>
-                        <p class="login-subtitle mb-0">Modern Point of Sale System</p>
+                        <p class="login-subtitle mb-0">Modern point of sale system for daily operations</p>
                     </div>
 
                     @if (session('status'))
-                        <div class="alert alert-success">{{ session('status') }}</div>
+                        <div class="alert alert-success rounded-4">{{ session('status') }}</div>
                     @endif
 
                     <form method="POST" action="{{ route('login') }}" class="d-grid gap-3">
@@ -48,7 +48,7 @@
                                 type="password"
                                 name="password"
                                 class="form-control form-control-lg @error('password') is-invalid @enderror"
-                                placeholder="••••••••"
+                                placeholder="Enter your password"
                                 required
                                 autocomplete="current-password"
                             >
@@ -70,7 +70,7 @@
                     </form>
 
                     <div class="login-footer text-center mt-4">
-                        © 2026 SwineTrack POS. All rights reserved.
+                        &copy; 2026 SwineTrack POS. All rights reserved.
                     </div>
                 </div>
             </div>
