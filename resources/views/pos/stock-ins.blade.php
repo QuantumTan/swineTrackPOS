@@ -192,6 +192,7 @@
                     <tr>
                         <th>Stock-In ID</th>
                         <th>Date</th>
+                        <th>Batch Status</th>
                         <th>Source Type</th>
                         <th>Supplier</th>
                         <th>Items</th>
@@ -205,6 +206,12 @@
                         <tr>
                             <td class="fw-semibold">{{ $stockIn['id'] }}</td>
                             <td>{{ $stockIn['date'] }}</td>
+                            <td>
+                                @include('pos.partials.status-pill', [
+                                    'label' => $stockIn['status']['label'],
+                                    'type' => $stockIn['status']['class'],
+                                ])
+                            </td>
                             <td>
                                 @include('pos.partials.status-pill', [
                                     'label' => $stockIn['source']['label'],
@@ -225,7 +232,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="table-empty">No stock-in records yet.</td>
+                            <td colspan="9" class="table-empty">No stock-in records yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -246,6 +253,13 @@
             'subtitle' => $stockIn['id'] . ' | ' . $stockIn['date'],
         ])
             <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="modal-detail-label">Batch Status</div>
+                    @include('pos.partials.status-pill', [
+                        'label' => $stockIn['status']['label'],
+                        'type' => $stockIn['status']['class'],
+                    ])
+                </div>
                 <div class="col-md-6">
                     <div class="modal-detail-label">Source Type</div>
                     @include('pos.partials.status-pill', [
@@ -296,6 +310,15 @@
                 @method('PUT')
 
                 <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Batch Status</label>
+                        <select name="batch_status" class="form-select">
+                            @foreach (\App\Enums\BatchStatus::manualValues() as $batchStatus)
+                                <option value="{{ $batchStatus }}" @selected(old('batch_status', $stockIn['manual_status']['value']) === $batchStatus)>{{ $batchStatus }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">"Sold Out" is automatic when all batch quantities reach zero. Use "Closed" only for a manual stop.</div>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Date</label>
                         <input type="datetime-local" name="batch_date" class="form-control" value="{{ old('batch_date', $stockIn['date_value']->format('Y-m-d\TH:i')) }}">

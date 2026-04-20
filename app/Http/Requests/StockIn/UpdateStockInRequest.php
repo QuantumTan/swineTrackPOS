@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\StockIn;
 
+use App\Enums\BatchStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,6 +19,7 @@ class UpdateStockInRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'batch_status' => ['required', Rule::in(BatchStatus::manualValues())],
             'batch_date' => ['required', 'date'],
             'source_type' => ['required', Rule::in(['Supplier', 'Own Livestock'])],
             'supplier_id' => [

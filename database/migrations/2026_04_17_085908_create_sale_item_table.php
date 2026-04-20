@@ -35,8 +35,8 @@ return new class extends Migration
 
      
         if (DB::getDriverName() !== 'sqlite') {
-            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_qty CHECK (qty_sold_kg > 0)');
-            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_price CHECK (price_per_kg > 0)');
+            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_qty CHECK (qty_sold_kg >= 0)');
+            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_price CHECK (price_per_kg >= 0)');
         }
 
     }
