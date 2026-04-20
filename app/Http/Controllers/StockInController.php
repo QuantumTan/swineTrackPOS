@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BatchStatus;
 use App\Http\Requests\StockIn\StoreStockInRequest;
 use App\Http\Requests\StockIn\UpdateStockInRequest;
 use App\Models\Batch;
@@ -87,6 +88,8 @@ class StockInController extends Controller
             'id' => 'B'.str_pad((string) $batch->batch_id, 4, '0', STR_PAD_LEFT),
             'date_value' => $batch->batch_date,
             'date' => Carbon::parse($batch->batch_date)->format('d M Y, h:i A'),
+            'status' => $this->presentBatchStatus($batch->effectiveStatus()),
+            'manual_status' => $this->presentBatchStatus($batch->manualStatus()),
             'source' => [
                 'label' => $batch->source_type,
                 'class' => $batch->source_type === 'Supplier' ? 'success' : 'info',
@@ -100,6 +103,18 @@ class StockInController extends Controller
             'total_qty' => number_format((float) $items->sum('qty'), 3).' kg',
             'total_value' => $totalCost,
             'total' => 'P'.number_format($totalCost, 2),
+        ];
+    }
+
+    /**
+     * @return array{value: string, label: string, class: string}
+     */
+    private function presentBatchStatus(BatchStatus $status): array
+    {
+        return [
+            'value' => $status->value,
+            'label' => $status->value,
+            'class' => $status->pillClass(),
         ];
     }
 

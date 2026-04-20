@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BatchStatus;
 use App\Models\Batch;
 use App\Models\BatchItem;
 use App\Models\Inventory;
@@ -17,10 +18,10 @@ class StockInService
     public function create(array $validated, int $userId): Batch
     {
         return DB::transaction(function () use ($validated, $userId) {
-            $this->ensureFirstBatchIsSoldOut();
+            $this->ensureNoOpenBatchExists();
 
             $batch = Batch::create($this->batchAttributes($validated, $userId) + [
-                'batch_status' => 'Open',
+                'batch_status' => BatchStatus::Open->value,
             ]);
 
             $this->createBatchItems($batch, $validated['items']);
@@ -30,16 +31,16 @@ class StockInService
         });
     }
 
-    private function ensureFirstBatchIsSoldOut(): void
+    private function ensureNoOpenBatchExists(): void
     {
-        $firstBatch = Batch::query()
-            ->orderBy('batch_date')
-            ->orderBy('batch_id')
-            ->first();
+        $openBatchExists = Batch::query()
+            ->where('batch_status', '!=', BatchStatus::Closed->value)
+            ->whereHas('items', fn ($query) => $query->where('qty_in_kg', '>', 0))
+            ->exists();
 
-        if ($firstBatch !== null && $firstBatch->batch_status !== 'Sold Out') {
+        if ($openBatchExists) {
             throw ValidationException::withMessages([
-                'stock_in_create' => 'Cannot record a new stock-in until the first batch is marked Sold Out.',
+                'stock_in_create' => 'Cannot record a new stock-in while another batch still has remaining quantity. It will become Sold Out automatically at zero, or you can mark it Closed.',
             ]);
         }
     }
@@ -50,6 +51,8 @@ class StockInService
     public function update(Batch $batch, array $validated): void
     {
         DB::transaction(function () use ($batch, $validated) {
+            $this->ensureOpenStatusDoesNotConflict($batch, $validated);
+
             $originalQuantities = $this->quantitiesByProduct(
                 $batch->items()
                     ->select('product_id', 'qty_in_kg')
@@ -91,11 +94,57 @@ class StockInService
             'source_type' => $validated['source_type'],
         ];
 
+        if (array_key_exists('batch_status', $validated)) {
+            $attributes['batch_status'] = $validated['batch_status'];
+        }
+
         if ($userId !== null) {
             $attributes['user_id'] = $userId;
         }
 
         return $attributes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function ensureOpenStatusDoesNotConflict(Batch $batch, array $validated): void
+    {
+        if (($validated['batch_status'] ?? null) === BatchStatus::Closed->value) {
+            return;
+        }
+
+        if (! $this->hasRemainingQuantity($validated['items'] ?? [])) {
+            return;
+        }
+
+        $anotherOpenBatchExists = Batch::query()
+            ->where('batch_id', '!=', $batch->batch_id)
+            ->where('batch_status', '!=', BatchStatus::Closed->value)
+            ->whereHas('items', fn ($query) => $query->where('qty_in_kg', '>', 0))
+            ->exists();
+
+        if ($anotherOpenBatchExists) {
+            throw ValidationException::withMessages([
+                'batch_status' => 'Only one batch with remaining quantity can stay Open at a time.',
+            ]);
+        }
+    }
+
+    /**
+     * @param  iterable<int, BatchItem|array<string, mixed>|object>  $items
+     */
+    private function hasRemainingQuantity(iterable $items): bool
+    {
+        foreach ($items as $item) {
+            $quantity = (float) (is_array($item) ? $item['qty_in_kg'] : $item->qty_in_kg);
+
+            if ($quantity > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

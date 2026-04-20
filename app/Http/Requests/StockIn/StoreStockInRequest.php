@@ -18,6 +18,7 @@ class StoreStockInRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'batch_status' => ['prohibited'],
             'batch_date' => ['required', 'date'],
             'source_type' => ['required', Rule::in(['Supplier', 'Own Livestock'])],
             'supplier_id' => [

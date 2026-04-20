@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Supplier;
 use App\Models\User;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 test('supplier stock-in validation requires a supplier id', function () {
@@ -77,4 +78,9 @@ test('sales domain models expose the documented relationships', function () {
         ->and($sale->user->is($user))->toBeTrue()
         ->and($saleItem->sale->is($sale))->toBeTrue()
         ->and($saleItem->product->is($product))->toBeTrue();
+});
+
+test('schema only keeps the singular product table', function () {
+    expect(Schema::hasTable('product'))->toBeTrue()
+        ->and(Schema::hasTable('products'))->toBeFalse();
 });
