@@ -53,18 +53,18 @@
                 <tbody>
                     @forelse ($inventoryItems as $item)
                         <tr>
-                            <td class="text-secondary">{{ $item['id'] }}</td>
-                            <td class="fw-semibold">{{ $item['name'] }}</td>
-                            <td>{{ $item['category'] }}</td>
-                            <td class="fw-semibold">{{ $item['stock'] }}</td>
+                            <td class="text-secondary">{{ $item->display_id }}</td>
+                            <td class="fw-semibold">{{ $item->product_name }}</td>
+                            <td>{{ $item->product_category }}</td>
+                            <td class="fw-semibold">{{ $item->formatted_stock }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
-                                    'label' => $item['status']['label'],
-                                    'type' => $item['status']['class'],
+                                    'label' => $item->stock_status['label'],
+                                    'type' => $item->stock_status['class'],
                                 ])
                             </td>
-                            <td>{{ $item['updated'] }}</td>
-                            <td>{{ $item['latest_supplier'] }}</td>
+                            <td>{{ $item->formatted_last_updated }}</td>
+                            <td>{{ $item->latest_supplier_display }}</td>
                         </tr>
                     @empty
                         <tr>

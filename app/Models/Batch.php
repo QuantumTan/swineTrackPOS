@@ -79,4 +79,83 @@ class Batch extends Model
     {
         return $this->hasMany(Sale::class, 'batch_id', 'batch_id');
     }
+
+    public function getDisplayIdAttribute(): string
+    {
+        return 'B'.str_pad((string) $this->batch_id, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function getFormattedDateAttribute(): string
+    {
+        return $this->batch_date->format('d M Y, h:i A');
+    }
+
+    /**
+     * @return array{value: string, label: string, class: string}
+     */
+    public function getStatusPresentationAttribute(): array
+    {
+        $status = $this->effectiveStatus();
+
+        return [
+            'value' => $status->value,
+            'label' => $status->value,
+            'class' => $status->pillClass(),
+        ];
+    }
+
+    /**
+     * @return array{value: string, label: string, class: string}
+     */
+    public function getManualStatusPresentationAttribute(): array
+    {
+        $status = $this->manualStatus();
+
+        return [
+            'value' => $status->value,
+            'label' => $status->value,
+            'class' => $status->pillClass(),
+        ];
+    }
+
+    /**
+     * @return array{label: string, class: string}
+     */
+    public function getSourcePresentationAttribute(): array
+    {
+        return [
+            'label' => $this->source_type,
+            'class' => $this->source_type === 'Supplier' ? 'success' : 'info',
+        ];
+    }
+
+    public function getSupplierDisplayAttribute(): string
+    {
+        return $this->supplier?->supplier_name ?? 'N/A';
+    }
+
+    public function getItemsCountAttribute(): int
+    {
+        return $this->items->count();
+    }
+
+    public function getTotalQtyValueAttribute(): float
+    {
+        return (float) $this->items->sum(fn (BatchItem $item): float => $item->qty_value);
+    }
+
+    public function getFormattedTotalQtyAttribute(): string
+    {
+        return number_format($this->total_qty_value, 3).' kg';
+    }
+
+    public function getTotalCostValueAttribute(): float
+    {
+        return (float) $this->items->sum(fn (BatchItem $item): float => $item->line_total_value);
+    }
+
+    public function getFormattedTotalCostAttribute(): string
+    {
+        return 'P'.number_format($this->total_cost_value, 2);
+    }
 }

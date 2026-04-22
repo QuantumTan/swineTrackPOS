@@ -9,13 +9,10 @@ use App\Models\Product;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class ProductController extends Controller
 {
-    private const LOW_STOCK_THRESHOLD = 20;
-
     /**
      * Display a listing of the resource.
      */
@@ -27,27 +24,6 @@ class ProductController extends Controller
             ->orderBy('product.product_id')
             ->paginate(10)
             ->withQueryString();
-
-        $products->through(function (Product $product) {
-                $stock = (float) ($product->current_stock_kg ?? 0);
-
-                return [
-                    'product_id' => $product->product_id,
-                    'id' => 'P'.str_pad((string) $product->product_id, 3, '0', STR_PAD_LEFT),
-                    'name' => $product->product_name,
-                    'category' => $product->product_category,
-                    'price_value' => (float) $product->product_price_per_kilo,
-                    'price' => 'P'.number_format((float) $product->product_price_per_kilo, 2),
-                    'stock' => number_format($stock, 3).' kg',
-                    'status' => [
-                        'label' => $stock <= 0 ? 'Out of Stock' : ($stock < self::LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'),
-                        'class' => $stock <= 0 ? 'danger' : ($stock < self::LOW_STOCK_THRESHOLD ? 'warning' : 'success'),
-                    ],
-                    'updated' => $product->last_updated_at
-                        ? Carbon::parse($product->last_updated_at)->format('d M Y, h:i A')
-                        : '-',
-                ];
-            });
 
         return view('pos.products', [
             'products' => $products,

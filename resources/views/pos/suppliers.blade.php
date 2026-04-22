@@ -202,22 +202,12 @@
                 </thead>
                 <tbody>
                     @forelse ($suppliers as $supplier)
-                        @php
-                            $statusType = $supplier->supplier_status === 'Active' ? 'success' : 'neutral';
-                            $lastDelivery = $supplier->batches_max_batch_date
-                                ? \Illuminate\Support\Carbon::parse($supplier->batches_max_batch_date)->format('d M Y, h:i A')
-                                : null;
-                            $contactFullName = trim(implode(' ', array_filter([
-                                $supplier->supplier_contact_first_name,
-                                $supplier->supplier_contact_last_name,
-                            ])));
-                        @endphp
                         <tr>
-                            <td class="text-secondary supplier-table-id">S{{ str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT) }}</td>
+                            <td class="text-secondary supplier-table-id">{{ $supplier->display_id }}</td>
                             <td>
                                 <div class="supplier-table-name">{{ $supplier->supplier_name }}</div>
                             </td>
-                            <td>{{ $contactFullName ?: '-' }}</td>
+                            <td>{{ $supplier->contact_full_name ?: '-' }}</td>
                             <td>
                                 @if ($supplier->supplier_phone_number)
                                     <a class="supplier-table-link" href="tel:{{ preg_replace('/\s+/', '', $supplier->supplier_phone_number) }}">{{ $supplier->supplier_phone_number }}</a>
@@ -229,12 +219,12 @@
                             <td>
                                 @include('pos.partials.status-pill', [
                                     'label' => $supplier->supplier_status,
-                                    'type' => $statusType,
+                                    'type' => $supplier->status_type,
                                 ])
                             </td>
                             <td class="supplier-cell-secondary">{{ $supplier->supplier_payment_terms ?: '-' }}</td>
                             <td class="fw-semibold">{{ $supplier->batches_count }}</td>
-                            <td class="supplier-cell-secondary">{{ $lastDelivery ?: '-' }}</td>
+                            <td class="supplier-cell-secondary">{{ $supplier->formatted_last_delivery ?: '-' }}</td>
                             <td class="text-center supplier-table-actions">
                                 @include('pos.partials.table-actions', [
                                     'view' => 'supplierView'.$supplier->supplier_id,
@@ -263,21 +253,10 @@
     </div>
 
     @foreach ($suppliers as $supplier)
-        @php
-            $statusType = $supplier->supplier_status === 'Active' ? 'success' : 'neutral';
-            $lastDelivery = $supplier->batches_max_batch_date
-                ? \Illuminate\Support\Carbon::parse($supplier->batches_max_batch_date)->format('d M Y, h:i A')
-                : 'No delivery history yet.';
-            $contactFullName = trim(implode(' ', array_filter([
-                $supplier->supplier_contact_first_name,
-                $supplier->supplier_contact_last_name,
-            ])));
-        @endphp
-
         @component('pos.partials.modal', [
             'id' => 'supplierView'.$supplier->supplier_id,
             'title' => 'Supplier Profile',
-            'subtitle' => 'S'.str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT).' | Read-only summary',
+            'subtitle' => $supplier->display_id.' | Read-only summary',
         ])
             <div class="supplier-modal-head mb-4">
                 <div class="supplier-identity-copy">
@@ -285,12 +264,12 @@
                         <h4 class="supplier-name">{{ $supplier->supplier_name }}</h4>
                         @include('pos.partials.status-pill', [
                             'label' => $supplier->supplier_status,
-                            'type' => $statusType,
+                            'type' => $supplier->status_type,
                         ])
                     </div>
                     <div class="supplier-meta-line">
-                        <span class="supplier-id-text">S{{ str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT) }}</span>
-                        <span>{{ $contactFullName ?: 'No contact person assigned' }}</span>
+                        <span class="supplier-id-text">{{ $supplier->display_id }}</span>
+                        <span>{{ $supplier->contact_full_name ?: 'No contact person assigned' }}</span>
                     </div>
                 </div>
             </div>
@@ -326,7 +305,7 @@
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Last Delivery</div>
-                    <div class="fw-semibold">{{ $lastDelivery }}</div>
+                    <div class="fw-semibold">{{ $supplier->formatted_last_delivery ?: 'No delivery history yet.' }}</div>
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Business Address</div>
@@ -343,7 +322,7 @@
         @component('pos.partials.modal', [
             'id' => 'supplierEdit'.$supplier->supplier_id,
             'title' => 'Edit Supplier',
-            'subtitle' => 'S'.str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT).' | Update supplier information',
+            'subtitle' => $supplier->display_id.' | Update supplier information',
         ])
             <form class="d-grid gap-4" method="POST" action="{{ route('suppliers.update', $supplier) }}">
                 @csrf
