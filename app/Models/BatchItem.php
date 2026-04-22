@@ -40,4 +40,39 @@ class BatchItem extends Model
     {
         return $this->belongsTo(Product::class, 'product_id', 'product_id');
     }
+
+    public function getProductDisplayNameAttribute(): string
+    {
+        return $this->product?->product_name ?? 'Unknown Product';
+    }
+
+    public function getQtyValueAttribute(): float
+    {
+        return (float) $this->qty_in_kg;
+    }
+
+    public function getCostValueAttribute(): float
+    {
+        return (float) $this->cost_per_kg;
+    }
+
+    public function getLineTotalValueAttribute(): float
+    {
+        return $this->qty_value * $this->cost_value;
+    }
+
+    public function getFormattedQtyAttribute(): string
+    {
+        return number_format($this->qty_value, 3);
+    }
+
+    public function getFormattedCostAttribute(): string
+    {
+        return 'P'.number_format($this->cost_value, 2);
+    }
+
+    public function getFormattedLineTotalAttribute(): string
+    {
+        return 'P'.number_format($this->line_total_value, 2);
+    }
 }

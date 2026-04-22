@@ -107,22 +107,22 @@
                 <tbody>
                     @forelse ($products as $product)
                         <tr>
-                            <td class="text-secondary">{{ $product['id'] }}</td>
-                            <td class="fw-semibold">{{ $product['name'] }}</td>
-                            <td>{{ $product['category'] }}</td>
-                            <td class="fw-semibold">{{ $product['price'] }}</td>
-                            <td class="fw-semibold">{{ $product['stock'] }}</td>
+                            <td class="text-secondary">{{ $product->display_id }}</td>
+                            <td class="fw-semibold">{{ $product->product_name }}</td>
+                            <td>{{ $product->product_category }}</td>
+                            <td class="fw-semibold">{{ $product->formatted_price }}</td>
+                            <td class="fw-semibold">{{ $product->formatted_stock }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
-                                    'label' => $product['status']['label'],
-                                    'type' => $product['status']['class'],
+                                    'label' => $product->stock_status['label'],
+                                    'type' => $product->stock_status['class'],
                                 ])
                             </td>
-                            <td>{{ $product['updated'] }}</td>
+                            <td>{{ $product->formatted_last_updated }}</td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
-                                    'edit' => 'productEdit'.$product['product_id'],
-                                    'delete' => 'productDelete'.$product['product_id'],
+                                    'edit' => 'productEdit'.$product->product_id,
+                                    'delete' => 'productDelete'.$product->product_id,
                                 ])
                             </td>
                         </tr>
@@ -144,30 +144,30 @@
 
     @foreach ($products as $product)
         @component('pos.partials.modal', [
-            'id' => 'productEdit'.$product['product_id'],
+            'id' => 'productEdit'.$product->product_id,
             'title' => 'Edit Product',
-            'subtitle' => $product['id'].' | Update pricing and classification',
+            'subtitle' => $product->display_id.' | Update pricing and classification',
         ])
-            <form class="d-grid gap-3" method="POST" action="{{ route('products.update', $product['product_id']) }}">
+            <form class="d-grid gap-3" method="POST" action="{{ route('products.update', $product) }}">
                 @csrf
                 @method('PUT')
 
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product Name</label>
-                        <input type="text" name="product_name" class="form-control" value="{{ old('product_name', $product['name']) }}">
+                        <input type="text" name="product_name" class="form-control" value="{{ old('product_name', $product->product_name) }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Category</label>
                         <select name="product_category" class="form-select">
                             @foreach ($categories as $category)
-                                <option @selected(old('product_category', $product['category']) === $category)>{{ $category }}</option>
+                                <option @selected(old('product_category', $product->product_category) === $category)>{{ $category }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Price per kg (P)</label>
-                        <input type="number" step="0.01" name="product_price_per_kilo" class="form-control" value="{{ old('product_price_per_kilo', $product['price_value']) }}">
+                        <input type="number" step="0.01" name="product_price_per_kilo" class="form-control" value="{{ old('product_price_per_kilo', $product->product_price_per_kilo) }}">
                     </div>
                 </div>
                 <div class="d-flex justify-content-end gap-2 pt-2">
@@ -178,13 +178,13 @@
         @endcomponent
 
         @component('pos.partials.modal', [
-            'id' => 'productDelete'.$product['product_id'],
+            'id' => 'productDelete'.$product->product_id,
             'title' => 'Delete Product',
             'subtitle' => 'This removes the product from the catalog UI.',
             'size' => 'modal-md',
         ])
-            <p class="text-secondary mb-4">Delete <span class="fw-semibold text-dark">{{ $product['name'] }}</span>? Existing inventory and sales references should be reviewed first.</p>
-            <form method="POST" action="{{ route('products.destroy', $product['product_id']) }}" class="d-flex justify-content-end gap-2">
+            <p class="text-secondary mb-4">Delete <span class="fw-semibold text-dark">{{ $product->product_name }}</span>? Existing inventory and sales references should be reviewed first.</p>
+            <form method="POST" action="{{ route('products.destroy', $product) }}" class="d-flex justify-content-end gap-2">
                 @csrf
                 @method('DELETE')
                 <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>

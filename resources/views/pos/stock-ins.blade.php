@@ -204,29 +204,29 @@
                 <tbody>
                     @forelse ($stockIns as $stockIn)
                         <tr>
-                            <td class="fw-semibold">{{ $stockIn['id'] }}</td>
-                            <td>{{ $stockIn['date'] }}</td>
+                            <td class="fw-semibold">{{ $stockIn->display_id }}</td>
+                            <td>{{ $stockIn->formatted_date }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
-                                    'label' => $stockIn['status']['label'],
-                                    'type' => $stockIn['status']['class'],
+                                    'label' => $stockIn->status_presentation['label'],
+                                    'type' => $stockIn->status_presentation['class'],
                                 ])
                             </td>
                             <td>
                                 @include('pos.partials.status-pill', [
-                                    'label' => $stockIn['source']['label'],
-                                    'type' => $stockIn['source']['class'],
+                                    'label' => $stockIn->source_presentation['label'],
+                                    'type' => $stockIn->source_presentation['class'],
                                 ])
                             </td>
-                            <td>{{ $stockIn['supplier'] }}</td>
-                            <td>{{ $stockIn['item_count'] }}</td>
-                            <td class="fw-semibold">{{ $stockIn['total_qty'] }}</td>
-                            <td class="fw-semibold">{{ $stockIn['total'] }}</td>
+                            <td>{{ $stockIn->supplier_display }}</td>
+                            <td>{{ $stockIn->items_count }}</td>
+                            <td class="fw-semibold">{{ $stockIn->formatted_total_qty }}</td>
+                            <td class="fw-semibold">{{ $stockIn->formatted_total_cost }}</td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
-                                    'view' => 'stockInView' . $stockIn['batch_id'],
-                                    'edit' => 'stockInEdit' . $stockIn['batch_id'],
-                                    'delete' => 'stockInDelete' . $stockIn['batch_id'],
+                                    'view' => 'stockInView' . $stockIn->batch_id,
+                                    'edit' => 'stockInEdit' . $stockIn->batch_id,
+                                    'delete' => 'stockInDelete' . $stockIn->batch_id,
                                 ])
                             </td>
                         </tr>
@@ -248,47 +248,47 @@
 
     @foreach ($stockIns as $stockIn)
         @component('pos.partials.modal', [
-            'id' => 'stockInView' . $stockIn['batch_id'],
+            'id' => 'stockInView' . $stockIn->batch_id,
             'title' => 'Stock-In Details',
-            'subtitle' => $stockIn['id'] . ' | ' . $stockIn['date'],
+            'subtitle' => $stockIn->display_id . ' | ' . $stockIn->formatted_date,
         ])
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="modal-detail-label">Batch Status</div>
                     @include('pos.partials.status-pill', [
-                        'label' => $stockIn['status']['label'],
-                        'type' => $stockIn['status']['class'],
+                        'label' => $stockIn->status_presentation['label'],
+                        'type' => $stockIn->status_presentation['class'],
                     ])
                 </div>
                 <div class="col-md-6">
                     <div class="modal-detail-label">Source Type</div>
                     @include('pos.partials.status-pill', [
-                        'label' => $stockIn['source']['label'],
-                        'type' => $stockIn['source']['class'],
+                        'label' => $stockIn->source_presentation['label'],
+                        'type' => $stockIn->source_presentation['class'],
                     ])
                 </div>
                 <div class="col-md-6">
                     <div class="modal-detail-label">Supplier</div>
-                    <div class="fw-semibold">{{ $stockIn['supplier'] }}</div>
+                    <div class="fw-semibold">{{ $stockIn->supplier_display }}</div>
                 </div>
                 <div class="col-md-6">
                     <div class="modal-detail-label">Total Cost</div>
-                    <div class="fw-semibold">{{ $stockIn['total'] }}</div>
+                    <div class="fw-semibold">{{ $stockIn->formatted_total_cost }}</div>
                 </div>
                 <div class="col-md-6">
                     <div class="modal-detail-label">Items Received</div>
-                    <div class="fw-semibold">{{ $stockIn['item_count'] }} item{{ $stockIn['item_count'] === 1 ? '' : 's' }} / {{ $stockIn['total_qty'] }}</div>
+                    <div class="fw-semibold">{{ $stockIn->items_count }} item{{ $stockIn->items_count === 1 ? '' : 's' }} / {{ $stockIn->formatted_total_qty }}</div>
                 </div>
                 <div class="col-12">
                     <div class="modal-detail-label">Items</div>
                     <div class="d-grid gap-2">
-                        @foreach ($stockIn['items'] as $item)
+                        @foreach ($stockIn->items as $item)
                             <div class="d-flex justify-content-between align-items-center rounded-3 border px-3 py-2">
                                 <div>
-                                    <div class="fw-semibold">{{ $item['name'] }}</div>
-                                    <div class="text-secondary small">{{ number_format($item['qty'], 3) }} kg at P{{ number_format($item['cost'], 2) }}/kg</div>
+                                    <div class="fw-semibold">{{ $item->product_display_name }}</div>
+                                    <div class="text-secondary small">{{ $item->formatted_qty }} kg at {{ $item->formatted_cost }}/kg</div>
                                 </div>
-                                <div class="fw-semibold">P{{ number_format($item['line_total'], 2) }}</div>
+                                <div class="fw-semibold">{{ $item->formatted_line_total }}</div>
                             </div>
                         @endforeach
                     </div>
@@ -301,11 +301,11 @@
         @endcomponent
 
         @component('pos.partials.modal', [
-            'id' => 'stockInEdit' . $stockIn['batch_id'],
+            'id' => 'stockInEdit' . $stockIn->batch_id,
             'title' => 'Edit Stock-In',
             'subtitle' => 'Adjust source details and incoming items.',
         ])
-            <form class="d-grid gap-3" method="POST" action="{{ route('stock-ins.update', $stockIn['batch_id']) }}" data-item-composer>
+            <form class="d-grid gap-3" method="POST" action="{{ route('stock-ins.update', $stockIn) }}" data-item-composer>
                 @csrf
                 @method('PUT')
 
@@ -314,20 +314,20 @@
                         <label class="form-label fw-semibold">Batch Status</label>
                         <select name="batch_status" class="form-select">
                             @foreach (\App\Enums\BatchStatus::manualValues() as $batchStatus)
-                                <option value="{{ $batchStatus }}" @selected(old('batch_status', $stockIn['manual_status']['value']) === $batchStatus)>{{ $batchStatus }}</option>
+                                <option value="{{ $batchStatus }}" @selected(old('batch_status', $stockIn->manual_status_presentation['value']) === $batchStatus)>{{ $batchStatus }}</option>
                             @endforeach
                         </select>
                         <div class="form-text">"Sold Out" is automatic when all batch quantities reach zero. Use "Closed" only for a manual stop.</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Date</label>
-                        <input type="datetime-local" name="batch_date" class="form-control" value="{{ old('batch_date', $stockIn['date_value']->format('Y-m-d\TH:i')) }}">
+                        <input type="datetime-local" name="batch_date" class="form-control" value="{{ old('batch_date', $stockIn->batch_date->format('Y-m-d\TH:i')) }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Source Type</label>
                         <select name="source_type" class="form-select">
-                            <option value="Supplier" @selected(old('source_type', $stockIn['source']['label']) === 'Supplier')>Supplier</option>
-                            <option value="Own Livestock" @selected(old('source_type', $stockIn['source']['label']) === 'Own Livestock')>Own Livestock</option>
+                            <option value="Supplier" @selected(old('source_type', $stockIn->source_presentation['label']) === 'Supplier')>Supplier</option>
+                            <option value="Own Livestock" @selected(old('source_type', $stockIn->source_presentation['label']) === 'Own Livestock')>Own Livestock</option>
                         </select>
                     </div>
                     <div class="col-12" data-supplier-field>
@@ -335,7 +335,7 @@
                         <select name="supplier_id" class="form-select">
                             <option value="">Select a supplier</option>
                             @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->supplier_id }}" @selected((string) old('supplier_id', $stockIn['supplier_id']) === (string) $supplier->supplier_id)>{{ $supplier->supplier_name }}</option>
+                                <option value="{{ $supplier->supplier_id }}" @selected((string) old('supplier_id', $stockIn->supplier_id) === (string) $supplier->supplier_id)>{{ $supplier->supplier_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -374,21 +374,21 @@
                                     </tr>
                                 </thead>
                                 <tbody data-item-table-body>
-                                    @foreach ($stockIn['items'] as $item)
+                                    @foreach ($stockIn->items as $item)
                                         <tr data-item-row>
-                                            <td data-item-label>{{ $item['name'] }}</td>
-                                            <td data-item-qty>{{ number_format($item['qty'], 3) }}</td>
-                                            <td data-item-cost>P{{ number_format($item['cost'], 2) }}</td>
-                                            <td data-item-total>P{{ number_format($item['line_total'], 2) }}</td>
+                                            <td data-item-label>{{ $item->product_display_name }}</td>
+                                            <td data-item-qty>{{ $item->formatted_qty }}</td>
+                                            <td data-item-cost>{{ $item->formatted_cost }}</td>
+                                            <td data-item-total>{{ $item->formatted_line_total }}</td>
                                             <td class="text-center">
                                                 <button type="button" class="btn btn-outline-danger btn-sm" data-item-remove>Remove</button>
                                             </td>
-                                            <input type="hidden" value="{{ $item['product_id'] }}" data-item-hidden="product_id">
-                                            <input type="hidden" value="{{ $item['qty'] }}" data-item-hidden="qty_in_kg">
-                                            <input type="hidden" value="{{ $item['cost'] }}" data-item-hidden="cost_per_kg">
+                                            <input type="hidden" value="{{ $item->product_id }}" data-item-hidden="product_id">
+                                            <input type="hidden" value="{{ $item->qty_value }}" data-item-hidden="qty_in_kg">
+                                            <input type="hidden" value="{{ $item->cost_value }}" data-item-hidden="cost_per_kg">
                                         </tr>
                                     @endforeach
-                                    @if (count($stockIn['items']) === 0)
+                                    @if ($stockIn->items->count() === 0)
                                         <tr data-item-empty-row>
                                             <td colspan="5" class="table-empty">No items added yet.</td>
                                         </tr>
@@ -406,14 +406,14 @@
         @endcomponent
 
         @component('pos.partials.modal', [
-            'id' => 'stockInDelete' . $stockIn['batch_id'],
+            'id' => 'stockInDelete' . $stockIn->batch_id,
             'title' => 'Delete Stock-In Record',
             'subtitle' => 'This action removes the current stock-in entry from the list.',
             'size' => 'modal-md',
         ])
-            <p class="text-secondary mb-4">Delete <span class="fw-semibold text-dark">{{ $stockIn['id'] }}</span>? Review
+            <p class="text-secondary mb-4">Delete <span class="fw-semibold text-dark">{{ $stockIn->display_id }}</span>? Review
                 inventory impact before removing this record.</p>
-            <form method="POST" action="{{ route('stock-ins.destroy', $stockIn['batch_id']) }}" class="d-flex justify-content-end gap-2">
+            <form method="POST" action="{{ route('stock-ins.destroy', $stockIn) }}" class="d-flex justify-content-end gap-2">
                 @csrf
                 @method('DELETE')
                 <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>

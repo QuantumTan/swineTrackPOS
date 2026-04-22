@@ -2,17 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\BatchStatus;
 use App\Http\Requests\StockIn\StoreStockInRequest;
 use App\Http\Requests\StockIn\UpdateStockInRequest;
 use App\Models\Batch;
-use App\Models\BatchItem;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Services\StockInService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -27,10 +24,8 @@ class StockInController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $stockIns = $batches->through(fn (Batch $batch) => $this->presentBatch($batch));
-
         return view('pos.stock-ins', [
-            'stockIns' => $stockIns,
+            'stockIns' => $batches,
             'summary' => $this->summary(),
             'products' => Product::query()->orderBy('product_name')->get(),
             'suppliers' => Supplier::query()->orderBy('supplier_name')->get(),
@@ -73,64 +68,6 @@ class StockInController extends Controller
         return redirect()
             ->route('stock-ins.index')
             ->with('status', 'Stock-in deleted successfully.');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function presentBatch(Batch $batch): array
-    {
-        $items = $batch->items->map(fn (BatchItem $item) => $this->presentBatchItem($item));
-        $totalCost = $items->sum('line_total');
-
-        return [
-            'batch_id' => $batch->batch_id,
-            'id' => 'B'.str_pad((string) $batch->batch_id, 4, '0', STR_PAD_LEFT),
-            'date_value' => $batch->batch_date,
-            'date' => Carbon::parse($batch->batch_date)->format('d M Y, h:i A'),
-            'status' => $this->presentBatchStatus($batch->effectiveStatus()),
-            'manual_status' => $this->presentBatchStatus($batch->manualStatus()),
-            'source' => [
-                'label' => $batch->source_type,
-                'class' => $batch->source_type === 'Supplier' ? 'success' : 'info',
-            ],
-            'supplier_id' => $batch->supplier_id,
-            'supplier' => $batch->supplier?->supplier_name ?? 'N/A',
-            'items' => $items,
-            'primary_item' => $items->first(),
-            'item_count' => $items->count(),
-            'total_qty_value' => (float) $items->sum('qty'),
-            'total_qty' => number_format((float) $items->sum('qty'), 3).' kg',
-            'total_value' => $totalCost,
-            'total' => 'P'.number_format($totalCost, 2),
-        ];
-    }
-
-    /**
-     * @return array{value: string, label: string, class: string}
-     */
-    private function presentBatchStatus(BatchStatus $status): array
-    {
-        return [
-            'value' => $status->value,
-            'label' => $status->value,
-            'class' => $status->pillClass(),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function presentBatchItem(BatchItem $item): array
-    {
-        return [
-            'batch_item_id' => $item->batch_item_id,
-            'product_id' => $item->product_id,
-            'name' => $item->product?->product_name ?? 'Unknown Product',
-            'qty' => (float) $item->qty_in_kg,
-            'cost' => (float) $item->cost_per_kg,
-            'line_total' => (float) $item->qty_in_kg * (float) $item->cost_per_kg,
-        ];
     }
 
     /**
