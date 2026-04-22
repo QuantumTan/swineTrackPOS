@@ -8,35 +8,35 @@
         <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">{{ session('status') }}</div>
     @endif
 
+    @php
+        $inventorySummaryCards = count($summary)
+            ? array_values($summary)
+            : [
+                ['label' => 'Total Products', 'value' => '0', 'meta' => 'Tracked catalog items'],
+                ['label' => 'In Stock', 'value' => '0', 'meta' => 'Products ready for selling'],
+                ['label' => 'Low Stock / Out', 'value' => '0', 'meta' => 'Items needing attention'],
+            ];
+        $inventorySummaryIcons = ['bi-box-seam', 'bi-check2-circle', 'bi-exclamation-triangle'];
+    @endphp
+
     <div class="row g-4 mb-4">
-        @if (count($summary))
-            @foreach ($summary as $card)
-                <div class="col-12 col-md-4">
-                    <div class="summary-card h-100">
-                        <div class="summary-label">{{ $card['label'] }}</div>
-                        <div class="summary-value">{{ $card['value'] }}</div>
-                    </div>
-                </div>
-            @endforeach
-        @else
-            @foreach (['Total Products', 'In Stock', 'Low Stock / Out'] as $label)
-                <div class="col-12 col-md-4">
-                    <div class="summary-card h-100">
-                        <div class="summary-label">{{ $label }}</div>
-                        <div class="summary-value">0</div>
-                    </div>
-                </div>
-            @endforeach
-        @endif
+        @foreach ($inventorySummaryCards as $index => $card)
+            <div class="col-12 col-md-4">
+                @include('pos.partials.summary-card', [
+                    'label' => $card['label'],
+                    'value' => $card['value'],
+                    'meta' => $card['meta'] ?? null,
+                    'icon' => $inventorySummaryIcons[$index] ?? 'bi-bar-chart-line',
+                ])
+            </div>
+        @endforeach
     </div>
 
     <section class="content-card">
-        <div class="card-header-clean">
-            <div>
-                <h3 class="section-title mb-1">Inventory Snapshot</h3>
-                <p class="section-subtitle mb-0">Detailed stock positions and the most recent update time for each product.</p>
-            </div>
-        </div>
+        @include('pos.partials.section-card-header', [
+            'title' => 'Inventory Snapshot',
+            'subtitle' => 'Detailed stock positions and the most recent update time for each product.',
+        ])
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
                 <thead>

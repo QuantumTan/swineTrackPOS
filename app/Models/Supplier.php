@@ -18,7 +18,14 @@ class Supplier extends Model
 
     protected $fillable = [
         'supplier_name',
+        'supplier_contact_first_name',
+        'supplier_contact_last_name',
         'supplier_phone_number',
+        'supplier_email',
+        'supplier_address',
+        'supplier_payment_terms',
+        'supplier_status',
+        'supplier_notes',
     ];
 
     public function batches(): HasMany

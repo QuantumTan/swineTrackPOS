@@ -16,16 +16,26 @@ class SupplierController extends Controller
         $suppliers = Supplier::query()
             ->withCount('batches')
             ->withMax('batches', 'batch_date')
-            ->orderBy('supplier_id')
+            ->orderByRaw("CASE WHEN supplier_status = 'Active' THEN 0 ELSE 1 END")
+            ->orderBy('supplier_name')
             ->paginate(10);
 
         return view('pos.suppliers', [
             'suppliers' => $suppliers,
             'supplierStats' => [
                 'total' => Supplier::query()->count(),
-                'with_phone' => Supplier::query()
-                    ->whereNotNull('supplier_phone_number')
-                    ->where('supplier_phone_number', '!=', '')
+                'active' => Supplier::query()
+                    ->where('supplier_status', 'Active')
+                    ->count(),
+                'contact_ready' => Supplier::query()
+                    ->where(function ($query) {
+                        $query->whereNotNull('supplier_phone_number')
+                            ->where('supplier_phone_number', '!=', '')
+                            ->orWhere(function ($emailQuery) {
+                                $emailQuery->whereNotNull('supplier_email')
+                                    ->where('supplier_email', '!=', '');
+                            });
+                    })
                     ->count(),
                 'with_delivery_history' => Supplier::query()
                     ->whereHas('batches')

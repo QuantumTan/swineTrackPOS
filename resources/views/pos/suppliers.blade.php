@@ -15,46 +15,162 @@
         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('supplier_delete') }}</div>
     @endif
 
+    @php
+        $supplierSummaryCards = [
+            ['label' => 'Total Suppliers', 'value' => $supplierStats['total'], 'meta' => 'Full directory records', 'icon' => 'bi-buildings'],
+            ['label' => 'Active Suppliers', 'value' => $supplierStats['active'], 'meta' => 'Available for new purchases', 'icon' => 'bi-check2-circle'],
+            ['label' => 'Contact Ready', 'value' => $supplierStats['contact_ready'], 'meta' => 'Phone or email already saved', 'icon' => 'bi-person-lines-fill'],
+            ['label' => 'With Delivery History', 'value' => $supplierStats['with_delivery_history'], 'meta' => 'Linked to stock-in batches', 'icon' => 'bi-clock-history'],
+        ];
+        $supplierHeaderAside = new \Illuminate\Support\HtmlString(
+            '<div class="card-header-note"><i class="bi bi-lightning-charge me-2"></i>View keeps the full profile, while the table stays focused on the essentials.</div>'
+        );
+    @endphp
+
+    <div class="row g-4 mb-4">
+        @foreach ($supplierSummaryCards as $card)
+            <div class="col-12 col-sm-6 col-xl-3">
+                @include('pos.partials.summary-card', [
+                    'label' => $card['label'],
+                    'value' => $card['value'],
+                    'meta' => $card['meta'],
+                    'icon' => $card['icon'],
+                ])
+            </div>
+        @endforeach
+    </div>
+
     <div class="collapse mb-4 {{ $errors->any() ? 'show' : '' }}" id="supplierCreatePanel">
         @component('pos.partials.panel-card', [
             'title' => 'Add New Supplier',
-            'subtitle' => 'Maintain a clean supplier directory with ready-to-use contact information.',
+            'subtitle' => 'Keep the supplier profile concise but complete enough for purchasing and follow-ups.',
             'dismissLabel' => 'Close supplier form',
             'dismissTarget' => 'supplierCreatePanel',
         ])
             <form class="d-grid gap-4" method="POST" action="{{ route('suppliers.store') }}">
                 @csrf
 
-                <div class="row g-3">
-                    <div class="col-12 col-lg-6">
+                <div class="row g-3 supplier-form-grid">
+                    <div class="col-12 col-xl-8">
                         <label class="form-label fw-semibold">Supplier Name</label>
                         <input
                             type="text"
                             name="supplier_name"
                             class="form-control @error('supplier_name') is-invalid @enderror"
                             value="{{ old('supplier_name') }}"
+                            placeholder="Metro Cuts Trading"
                         >
                         @error('supplier_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="col-12 col-lg-6">
+                    <div class="col-12 col-xl-4">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select
+                            name="supplier_status"
+                            class="form-select @error('supplier_status') is-invalid @enderror"
+                        >
+                            <option value="Active" @selected(old('supplier_status', 'Active') === 'Active')>Active</option>
+                            <option value="Inactive" @selected(old('supplier_status') === 'Inactive')>Inactive</option>
+                        </select>
+                        @error('supplier_status')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Contact First Name</label>
+                        <input
+                            type="text"
+                            name="supplier_contact_first_name"
+                            class="form-control @error('supplier_contact_first_name') is-invalid @enderror"
+                            value="{{ old('supplier_contact_first_name') }}"
+                            placeholder="Ana"
+                        >
+                        @error('supplier_contact_first_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Contact Last Name</label>
+                        <input
+                            type="text"
+                            name="supplier_contact_last_name"
+                            class="form-control @error('supplier_contact_last_name') is-invalid @enderror"
+                            value="{{ old('supplier_contact_last_name') }}"
+                            placeholder="Ramos"
+                        >
+                        @error('supplier_contact_last_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-12 col-lg-4">
                         <label class="form-label fw-semibold">Contact Number</label>
                         <input
                             type="text"
                             name="supplier_phone_number"
                             class="form-control @error('supplier_phone_number') is-invalid @enderror"
                             value="{{ old('supplier_phone_number') }}"
-                            placeholder="Optional"
+                            placeholder="09xx xxx xxxx"
                         >
                         @error('supplier_phone_number')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Email Address</label>
+                        <input
+                            type="email"
+                            name="supplier_email"
+                            class="form-control @error('supplier_email') is-invalid @enderror"
+                            value="{{ old('supplier_email') }}"
+                            placeholder="buyer@supplier.com"
+                        >
+                        @error('supplier_email')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Payment Terms</label>
+                        <input
+                            type="text"
+                            name="supplier_payment_terms"
+                            class="form-control @error('supplier_payment_terms') is-invalid @enderror"
+                            value="{{ old('supplier_payment_terms') }}"
+                            placeholder="COD / 7-day terms"
+                        >
+                        @error('supplier_payment_terms')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-12 col-lg-8">
+                        <label class="form-label fw-semibold">Business Address</label>
+                        <input
+                            type="text"
+                            name="supplier_address"
+                            class="form-control @error('supplier_address') is-invalid @enderror"
+                            value="{{ old('supplier_address') }}"
+                            placeholder="Barangay, city, province"
+                        >
+                        @error('supplier_address')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Supplier Notes</label>
+                        <textarea
+                            name="supplier_notes"
+                            class="form-control @error('supplier_notes') is-invalid @enderror"
+                            rows="3"
+                            placeholder="Delivery reminders, preferred cut types, schedule notes, or account concerns."
+                        >{{ old('supplier_notes') }}</textarea>
+                        @error('supplier_notes')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
 
                 <div class="d-flex flex-wrap gap-2">
-                    <button type="submit" class="btn btn-success px-4">Save</button>
+                    <button type="submit" class="btn btn-success px-4">Save Supplier</button>
                     <button type="button" class="btn btn-light border px-4" data-bs-toggle="collapse" data-bs-target="#supplierCreatePanel" aria-controls="supplierCreatePanel">Cancel</button>
                 </div>
             </form>
@@ -62,19 +178,23 @@
     </div>
 
     <div class="content-card">
-        <div class="toolbar-row">
-            <div class="toolbar-chip"><i class="bi bi-truck me-2"></i>{{ $supplierStats['total'] }} active suppliers</div>
-            <div class="toolbar-chip"><i class="bi bi-telephone me-2"></i>{{ $supplierStats['with_phone'] }} contact numbers saved</div>
-            <div class="toolbar-chip"><i class="bi bi-box-arrow-in-down me-2"></i>{{ $supplierStats['with_delivery_history'] }} suppliers with delivery history</div>
-        </div>
+        @include('pos.partials.section-card-header', [
+            'title' => 'Supplier Directory',
+            'subtitle' => 'A simpler table layout for scanning suppliers quickly without losing the important details.',
+            'aside' => $supplierHeaderAside,
+        ])
 
         <div class="table-responsive">
-            <table class="table app-table align-middle mb-0">
+            <table class="table app-table align-middle mb-0 supplier-table">
                 <thead>
                     <tr>
                         <th>Supplier ID</th>
                         <th>Supplier Name</th>
-                        <th>Contact Number</th>
+                        <th>Contact Person</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Payment Terms</th>
                         <th>Deliveries</th>
                         <th>Last Delivery</th>
                         <th class="text-center">Actions</th>
@@ -82,16 +202,42 @@
                 </thead>
                 <tbody>
                     @forelse ($suppliers as $supplier)
+                        @php
+                            $statusType = $supplier->supplier_status === 'Active' ? 'success' : 'neutral';
+                            $lastDelivery = $supplier->batches_max_batch_date
+                                ? \Illuminate\Support\Carbon::parse($supplier->batches_max_batch_date)->format('d M Y, h:i A')
+                                : null;
+                            $contactFullName = trim(implode(' ', array_filter([
+                                $supplier->supplier_contact_first_name,
+                                $supplier->supplier_contact_last_name,
+                            ])));
+                        @endphp
                         <tr>
-                            <td class="text-secondary">S{{ str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT) }}</td>
-                            <td class="fw-semibold">{{ $supplier->supplier_name }}</td>
-                            <td>{{ $supplier->supplier_phone_number ?: '-' }}</td>
-                            <td>{{ $supplier->batches_count }}</td>
+                            <td class="text-secondary supplier-table-id">S{{ str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT) }}</td>
                             <td>
-                                {{ $supplier->batches_max_batch_date ? \Illuminate\Support\Carbon::parse($supplier->batches_max_batch_date)->format('d M Y, h:i A') : '-' }}
+                                <div class="supplier-table-name">{{ $supplier->supplier_name }}</div>
                             </td>
-                            <td class="text-center">
+                            <td>{{ $contactFullName ?: '-' }}</td>
+                            <td>
+                                @if ($supplier->supplier_phone_number)
+                                    <a class="supplier-table-link" href="tel:{{ preg_replace('/\s+/', '', $supplier->supplier_phone_number) }}">{{ $supplier->supplier_phone_number }}</a>
+                                @else
+                                    <span class="supplier-cell-muted">-</span>
+                                @endif
+                            </td>
+                            <td class="supplier-cell-secondary">{{ $supplier->supplier_email ?: '-' }}</td>
+                            <td>
+                                @include('pos.partials.status-pill', [
+                                    'label' => $supplier->supplier_status,
+                                    'type' => $statusType,
+                                ])
+                            </td>
+                            <td class="supplier-cell-secondary">{{ $supplier->supplier_payment_terms ?: '-' }}</td>
+                            <td class="fw-semibold">{{ $supplier->batches_count }}</td>
+                            <td class="supplier-cell-secondary">{{ $lastDelivery ?: '-' }}</td>
+                            <td class="text-center supplier-table-actions">
                                 @include('pos.partials.table-actions', [
+                                    'view' => 'supplierView'.$supplier->supplier_id,
                                     'edit' => 'supplierEdit'.$supplier->supplier_id,
                                     'delete' => 'supplierDelete'.$supplier->supplier_id,
                                 ])
@@ -99,7 +245,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="table-empty">No suppliers added yet.</td>
+                            <td colspan="10" class="table-empty">No suppliers added yet. Start by creating a supplier profile with contact and purchasing details.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -117,25 +263,134 @@
     </div>
 
     @foreach ($suppliers as $supplier)
+        @php
+            $statusType = $supplier->supplier_status === 'Active' ? 'success' : 'neutral';
+            $lastDelivery = $supplier->batches_max_batch_date
+                ? \Illuminate\Support\Carbon::parse($supplier->batches_max_batch_date)->format('d M Y, h:i A')
+                : 'No delivery history yet.';
+            $contactFullName = trim(implode(' ', array_filter([
+                $supplier->supplier_contact_first_name,
+                $supplier->supplier_contact_last_name,
+            ])));
+        @endphp
+
+        @component('pos.partials.modal', [
+            'id' => 'supplierView'.$supplier->supplier_id,
+            'title' => 'Supplier Profile',
+            'subtitle' => 'S'.str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT).' | Read-only summary',
+        ])
+            <div class="supplier-modal-head mb-4">
+                <div class="supplier-identity-copy">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <h4 class="supplier-name">{{ $supplier->supplier_name }}</h4>
+                        @include('pos.partials.status-pill', [
+                            'label' => $supplier->supplier_status,
+                            'type' => $statusType,
+                        ])
+                    </div>
+                    <div class="supplier-meta-line">
+                        <span class="supplier-id-text">S{{ str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT) }}</span>
+                        <span>{{ $contactFullName ?: 'No contact person assigned' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="supplier-modal-grid mb-3">
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Supplier Name</div>
+                    <div class="fw-semibold">{{ $supplier->supplier_name }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Contact First Name</div>
+                    <div class="fw-semibold">{{ $supplier->supplier_contact_first_name ?: '-' }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Contact Last Name</div>
+                    <div class="fw-semibold">{{ $supplier->supplier_contact_last_name ?: '-' }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Contact Number</div>
+                    <div class="fw-semibold">{{ $supplier->supplier_phone_number ?: '-' }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Email Address</div>
+                    <div class="fw-semibold">{{ $supplier->supplier_email ?: '-' }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Payment Terms</div>
+                    <div class="fw-semibold">{{ $supplier->supplier_payment_terms ?: '-' }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Delivery Count</div>
+                    <div class="fw-semibold">{{ $supplier->batches_count }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Last Delivery</div>
+                    <div class="fw-semibold">{{ $lastDelivery }}</div>
+                </div>
+                <div class="supplier-detail-card">
+                    <div class="modal-detail-label">Business Address</div>
+                    <div class="fw-semibold">{{ $supplier->supplier_address ?: '-' }}</div>
+                </div>
+            </div>
+
+            <div class="supplier-notes-card">
+                <div class="modal-detail-label">Supplier Notes</div>
+                <p class="mb-0">{{ $supplier->supplier_notes ?: 'No supplier notes added yet.' }}</p>
+            </div>
+        @endcomponent
+
         @component('pos.partials.modal', [
             'id' => 'supplierEdit'.$supplier->supplier_id,
             'title' => 'Edit Supplier',
             'subtitle' => 'S'.str_pad((string) $supplier->supplier_id, 3, '0', STR_PAD_LEFT).' | Update supplier information',
         ])
-            <form class="d-grid gap-3" method="POST" action="{{ route('suppliers.update', $supplier) }}">
+            <form class="d-grid gap-4" method="POST" action="{{ route('suppliers.update', $supplier) }}">
                 @csrf
                 @method('PUT')
 
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-12 col-xl-8">
                         <label class="form-label fw-semibold">Supplier Name</label>
                         <input type="text" name="supplier_name" class="form-control" value="{{ $supplier->supplier_name }}">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-xl-4">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select name="supplier_status" class="form-select">
+                            <option value="Active" @selected($supplier->supplier_status === 'Active')>Active</option>
+                            <option value="Inactive" @selected($supplier->supplier_status === 'Inactive')>Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Contact First Name</label>
+                        <input type="text" name="supplier_contact_first_name" class="form-control" value="{{ $supplier->supplier_contact_first_name }}">
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Contact Last Name</label>
+                        <input type="text" name="supplier_contact_last_name" class="form-control" value="{{ $supplier->supplier_contact_last_name }}">
+                    </div>
+                    <div class="col-12 col-lg-4">
                         <label class="form-label fw-semibold">Contact Number</label>
                         <input type="text" name="supplier_phone_number" class="form-control" value="{{ $supplier->supplier_phone_number }}">
                     </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Email Address</label>
+                        <input type="email" name="supplier_email" class="form-control" value="{{ $supplier->supplier_email }}">
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Payment Terms</label>
+                        <input type="text" name="supplier_payment_terms" class="form-control" value="{{ $supplier->supplier_payment_terms }}">
+                    </div>
+                    <div class="col-12 col-lg-8">
+                        <label class="form-label fw-semibold">Business Address</label>
+                        <input type="text" name="supplier_address" class="form-control" value="{{ $supplier->supplier_address }}">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Supplier Notes</label>
+                        <textarea name="supplier_notes" class="form-control" rows="3">{{ $supplier->supplier_notes }}</textarea>
+                    </div>
                 </div>
+
                 <div class="d-flex justify-content-end gap-2 pt-2">
                     <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success">Save Changes</button>
