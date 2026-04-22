@@ -14,7 +14,14 @@ return new class extends Migration
         Schema::create('supplier', function (Blueprint $table) {
             $table->increments('supplier_id');
             $table->string('supplier_name', 100);
-            $table->string('supplier_phone_number', 15)->nullable();
+            $table->string('supplier_contact_first_name', 50)->nullable();
+            $table->string('supplier_contact_last_name', 50)->nullable();
+            $table->string('supplier_phone_number', 20)->nullable();
+            $table->string('supplier_email', 120)->nullable();
+            $table->string('supplier_address', 255)->nullable();
+            $table->string('supplier_payment_terms', 80)->nullable();
+            $table->enum('supplier_status', ['Active', 'Inactive'])->default('Active');
+            $table->text('supplier_notes')->nullable();
         });
     }
 

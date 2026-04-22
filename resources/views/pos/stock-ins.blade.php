@@ -18,26 +18,28 @@
         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_create') }}</div>
     @endif
 
+    @php
+        $stockInSummaryCards = count($summary)
+            ? array_values($summary)
+            : [
+                ['label' => 'Today Entries', 'value' => '0', 'meta' => 'No receiving posted today'],
+                ['label' => 'This Week Cost', 'value' => '0', 'meta' => 'Incoming cost total for the week'],
+                ['label' => 'Primary Source', 'value' => 'N/A', 'meta' => 'Main receiving source so far'],
+            ];
+        $stockInSummaryIcons = ['bi-calendar-check', 'bi-cash-stack', 'bi-truck'];
+    @endphp
+
     <div class="row g-4 mb-4">
-        @if (count($summary))
-            @foreach ($summary as $card)
-                <div class="col-12 col-md-4">
-                    <div class="stat-card compact">
-                        <div class="stat-label">{{ $card['label'] }}</div>
-                        <div class="stat-value">{{ $card['value'] }}</div>
-                    </div>
-                </div>
-            @endforeach
-        @else
-            @foreach ([['label' => 'Today Entries', 'value' => '0'], ['label' => 'This Week Cost', 'value' => '0'], ['label' => 'Primary Source', 'value' => 'N/A']] as $card)
-                <div class="col-12 col-md-4">
-                    <div class="stat-card compact">
-                        <div class="stat-label">{{ $card['label'] }}</div>
-                        <div class="stat-value">{{ $card['value'] }}</div>
-                    </div>
-                </div>
-            @endforeach
-        @endif
+        @foreach ($stockInSummaryCards as $index => $card)
+            <div class="col-12 col-md-4">
+                @include('pos.partials.summary-card', [
+                    'label' => $card['label'],
+                    'value' => $card['value'],
+                    'meta' => $card['meta'] ?? null,
+                    'icon' => $stockInSummaryIcons[$index] ?? 'bi-bar-chart-line',
+                ])
+            </div>
+        @endforeach
     </div>
 
     <div class="collapse mb-4 {{ $errors->any() ? 'show' : '' }}" id="stockInCreatePanel">
@@ -180,12 +182,10 @@
     </div>
 
     <section class="content-card">
-        <div class="card-header-clean">
-            <div>
-                <h3 class="section-title mb-1">Stock-In Records</h3>
-                <p class="section-subtitle mb-0">Review recent inventory arrivals and trace each incoming batch.</p>
-            </div>
-        </div>
+        @include('pos.partials.section-card-header', [
+            'title' => 'Stock-In Records',
+            'subtitle' => 'Review recent inventory arrivals and trace each incoming batch.',
+        ])
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
                 <thead>

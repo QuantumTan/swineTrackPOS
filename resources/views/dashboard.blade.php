@@ -7,18 +7,12 @@
     <div class="row g-4 mb-4">
         @foreach ($summaryCards as $card)
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="stat-card h-100">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                        <div>
-                            <div class="stat-label">{{ $card['label'] }}</div>
-                            <div class="stat-value">{{ $card['value'] }}</div>
-                            <div class="stat-trend">{{ $card['trend'] }}</div>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="bi {{ $card['icon'] }}"></i>
-                        </div>
-                    </div>
-                </div>
+                @include('pos.partials.summary-card', [
+                    'label' => $card['label'],
+                    'value' => $card['value'],
+                    'meta' => $card['trend'],
+                    'icon' => $card['icon'],
+                ])
             </div>
         @endforeach
     </div>
@@ -133,12 +127,10 @@
     <div class="row g-4">
         <div class="col-12 col-xl-5">
             <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <div>
-                        <h3 class="section-title mb-1">Stock Snapshot</h3>
-                        <p class="section-subtitle mb-0">Sample rows from the inventory snapshot.</p>
-                    </div>
-                </div>
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Stock Snapshot',
+                    'subtitle' => 'Sample rows from the inventory snapshot.',
+                ])
 
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">
@@ -172,12 +164,10 @@
 
         <div class="col-12 col-xl-7">
             <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <div>
-                        <h3 class="section-title mb-1">Receiving Cost Review</h3>
-                        <p class="section-subtitle mb-0">Sample intake lines for recent receiving activity.</p>
-                    </div>
-                </div>
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Receiving Cost Review',
+                    'subtitle' => 'Sample intake lines for recent receiving activity.',
+                ])
 
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">

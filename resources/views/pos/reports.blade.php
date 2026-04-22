@@ -10,18 +10,12 @@
     <div class="row g-4 mb-4">
         @foreach ($summaryCards as $card)
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="stat-card h-100">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                        <div>
-                            <div class="stat-label">{{ $card['label'] }}</div>
-                            <div class="stat-value">{{ $card['value'] }}</div>
-                            <div class="stat-trend">{{ $card['trend'] }}</div>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="bi {{ $card['icon'] }}"></i>
-                        </div>
-                    </div>
-                </div>
+                @include('pos.partials.summary-card', [
+                    'label' => $card['label'],
+                    'value' => $card['value'],
+                    'meta' => $card['trend'],
+                    'icon' => $card['icon'],
+                ])
             </div>
         @endforeach
     </div>
@@ -150,12 +144,10 @@
     <div class="row g-4 mb-4">
         <div class="col-12 col-xl-5">
             <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <div>
-                        <h3 class="section-title mb-1">Low Stock Watchlist</h3>
-                        <p class="section-subtitle mb-0">Products currently below the safe stock level.</p>
-                    </div>
-                </div>
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Low Stock Watchlist',
+                    'subtitle' => 'Products currently below the safe stock level.',
+                ])
 
                 <div class="p-4 pt-3 d-grid gap-3">
                     @foreach ($lowStockProducts as $product)
@@ -178,12 +170,10 @@
 
         <div class="col-12 col-xl-7">
             <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <div>
-                        <h3 class="section-title mb-1">Daily Sales Breakdown</h3>
-                        <p class="section-subtitle mb-0">Sample rows for sale day, total transactions, and total sales.</p>
-                    </div>
-                </div>
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Daily Sales Breakdown',
+                    'subtitle' => 'Sample rows for sale day, total transactions, and total sales.',
+                ])
 
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">
@@ -212,12 +202,10 @@
     <div class="row g-4">
         <div class="col-12 col-xl-6">
             <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <div>
-                        <h3 class="section-title mb-1">Sales Activity</h3>
-                        <p class="section-subtitle mb-0">Recent sold items and line totals.</p>
-                    </div>
-                </div>
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Sales Activity',
+                    'subtitle' => 'Recent sold items and line totals.',
+                ])
 
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">
@@ -252,12 +240,10 @@
 
         <div class="col-12 col-xl-6">
             <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <div>
-                        <h3 class="section-title mb-1">Batch Cost Review</h3>
-                        <p class="section-subtitle mb-0">Rows for recent receiving cost activity.</p>
-                    </div>
-                </div>
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Batch Cost Review',
+                    'subtitle' => 'Rows for recent receiving cost activity.',
+                ])
 
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">

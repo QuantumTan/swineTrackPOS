@@ -74,11 +74,21 @@
         @endcomponent
     </div>
 
+    @php
+        $productHeaderAside = new \Illuminate\Support\HtmlString(
+            '<div class="section-header-pills">'
+            . '<div class="toolbar-chip"><i class="bi bi-grid me-2"></i>'.$products->total().' total products</div>'
+            . '<div class="toolbar-chip"><i class="bi bi-box-seam me-2"></i>Stock quantity and status stay visible in the table</div>'
+            . '</div>'
+        );
+    @endphp
+
     <div class="content-card">
-        <div class="toolbar-row">
-            <div class="toolbar-chip"><i class="bi bi-grid me-2"></i>{{ $products->total() }} total products</div>
-            <div class="toolbar-chip"><i class="bi bi-box-seam me-2"></i>Stock quantity and status are both visible below</div>
-        </div>
+        @include('pos.partials.section-card-header', [
+            'title' => 'Product Catalog',
+            'subtitle' => 'Browse current products, pricing, and stock availability in one place.',
+            'aside' => $productHeaderAside,
+        ])
 
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
