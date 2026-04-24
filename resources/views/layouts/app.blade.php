@@ -35,6 +35,10 @@
                 @include('pos.partials.topbar')
 
                 <main class="app-main px-3 px-lg-4 py-4">
+                    @if (session('error'))
+                        <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ session('error') }}</div>
+                    @endif
+
                     {{ $slot }}
                 </main>
             </div>

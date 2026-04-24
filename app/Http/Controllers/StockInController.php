@@ -24,11 +24,23 @@ class StockInController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        $activeSuppliers = Supplier::query()
+            ->where('supplier_status', 'Active')
+            ->orderBy('supplier_name')
+            ->get();
+
+        $selectableSuppliers = $activeSuppliers
+            ->concat($batches->getCollection()->pluck('supplier')->filter())
+            ->unique('supplier_id')
+            ->sortBy('supplier_name')
+            ->values();
+
         return view('pos.stock-ins', [
             'stockIns' => $batches,
             'summary' => $this->summary(),
             'products' => Product::query()->orderBy('product_name')->get(),
-            'suppliers' => Supplier::query()->orderBy('supplier_name')->get(),
+            'activeSuppliers' => $activeSuppliers,
+            'selectableSuppliers' => $selectableSuppliers,
         ]);
     }
 

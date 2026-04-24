@@ -549,3 +549,60 @@ test('supplier source stock-in requires a supplier link', function () {
 
     expect(Batch::query()->count())->toBe(0);
 });
+
+test('new stock-in form only lists active suppliers', function () {
+    $user = User::factory()->create();
+
+    Supplier::create([
+        'supplier_name' => 'Active Farm Supply',
+        'supplier_status' => 'Active',
+    ]);
+
+    Supplier::create([
+        'supplier_name' => 'Inactive Farm Supply',
+        'supplier_status' => 'Inactive',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('stock-ins.index'));
+
+    $response->assertOk();
+    $response->assertSee('Active Farm Supply');
+    $response->assertDontSee('Inactive Farm Supply');
+});
+
+test('cannot create stock-in with an inactive supplier', function () {
+    $user = User::factory()->create();
+    $supplier = Supplier::create([
+        'supplier_name' => 'Inactive Farm Supply',
+        'supplier_status' => 'Inactive',
+    ]);
+    $product = Product::create([
+        'product_name' => 'Pork Ham',
+        'product_category' => 'Premium Cuts',
+        'product_price_per_kilo' => 300.00,
+    ]);
+
+    $response = $this
+        ->from(route('stock-ins.index'))
+        ->actingAs($user)
+        ->post(route('stock-ins.store'), [
+            'batch_date' => now()->format('Y-m-d H:i:s'),
+            'source_type' => 'Supplier',
+            'supplier_id' => $supplier->supplier_id,
+            'items' => [
+                [
+                    'product_id' => $product->product_id,
+                    'qty_in_kg' => 3.500,
+                    'cost_per_kg' => 210.00,
+                ],
+            ],
+        ]);
+
+    $response
+        ->assertRedirect(route('stock-ins.index'))
+        ->assertSessionHasErrors('supplier_id');
+
+    expect(Batch::query()->count())->toBe(0);
+});
