@@ -27,7 +27,15 @@ class UpdateStockInRequest extends FormRequest
                 Rule::prohibitedIf(fn (): bool => $this->input('source_type') !== 'Supplier'),
                 'nullable',
                 'integer',
-                'exists:supplier,supplier_id',
+                Rule::exists('supplier', 'supplier_id')->where(function ($query) {
+                    $query->where('supplier_status', 'Active');
+
+                    $batch = $this->route('batch');
+
+                    if ($batch?->supplier_id) {
+                        $query->orWhere('supplier_id', $batch->supplier_id);
+                    }
+                }),
             ],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:product,product_id'],

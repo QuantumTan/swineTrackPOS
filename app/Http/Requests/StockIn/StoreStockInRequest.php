@@ -26,7 +26,7 @@ class StoreStockInRequest extends FormRequest
                 Rule::prohibitedIf(fn (): bool => $this->input('source_type') !== 'Supplier'),
                 'nullable',
                 'integer',
-                'exists:supplier,supplier_id',
+                Rule::exists('supplier', 'supplier_id')->where(fn ($query) => $query->where('supplier_status', 'Active')),
             ],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:product,product_id'],

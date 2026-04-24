@@ -2,6 +2,7 @@
 
 use App\Models\Supplier;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 
 test('authenticated users can create a supplier with an expanded profile', function () {
     $user = User::factory()->create();
@@ -105,4 +106,26 @@ test('supplier directory shows expanded profile details and view actions', funct
     $response->assertSee('Maharlika Highway, Cabanatuan City, Nueva Ecija');
     $response->assertSee('7-day terms');
     $response->assertSee('data-bs-target="#supplierView'.$supplier->supplier_id.'"', false);
+});
+
+test('expired supplier update submissions redirect back with a helpful message', function () {
+    $user = User::factory()->create();
+
+    $supplier = Supplier::create([
+        'supplier_name' => 'South Valley Hog Farm',
+        'supplier_status' => 'Active',
+    ]);
+
+    $response = $this
+        ->withMiddleware(VerifyCsrfToken::class)
+        ->from(route('suppliers.index'))
+        ->actingAs($user)
+        ->put(route('suppliers.update', $supplier), [
+            'supplier_name' => 'South Valley Hog Farm',
+            'supplier_status' => 'Inactive',
+        ]);
+
+    $response
+        ->assertRedirect(route('suppliers.index'))
+        ->assertSessionHas('error', 'Your session expired before the form was submitted. Please try saving again.');
 });

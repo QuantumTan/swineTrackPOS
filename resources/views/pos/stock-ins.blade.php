@@ -79,7 +79,7 @@
                         <label class="form-label fw-semibold">Supplier</label>
                         <select name="supplier_id" class="form-select @error('supplier_id') is-invalid @enderror">
                             <option selected>Select a supplier</option>
-                            @foreach ($suppliers as $supplier)
+                            @foreach ($activeSuppliers as $supplier)
                                 <option value="{{ $supplier->supplier_id }}" @selected((string) old('supplier_id') === (string) $supplier->supplier_id)>{{ $supplier->supplier_name }}</option>
                             @endforeach
                         </select>
@@ -334,7 +334,7 @@
                         <label class="form-label fw-semibold">Supplier</label>
                         <select name="supplier_id" class="form-select">
                             <option value="">Select a supplier</option>
-                            @foreach ($suppliers as $supplier)
+                            @foreach ($selectableSuppliers as $supplier)
                                 <option value="{{ $supplier->supplier_id }}" @selected((string) old('supplier_id', $stockIn->supplier_id) === (string) $supplier->supplier_id)>{{ $supplier->supplier_name }}</option>
                             @endforeach
                         </select>
