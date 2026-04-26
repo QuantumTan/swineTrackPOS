@@ -24,9 +24,7 @@ class Supplier extends Model
         'supplier_phone_number',
         'supplier_email',
         'supplier_address',
-        'supplier_payment_terms',
         'supplier_status',
-        'supplier_notes',
     ];
 
     protected function casts(): array
