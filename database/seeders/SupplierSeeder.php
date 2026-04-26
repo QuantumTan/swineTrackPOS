@@ -20,9 +20,7 @@ class SupplierSeeder extends Seeder
                 'supplier_phone_number' => '09171234567',
                 'supplier_email' => 'ana.ramos@metrocuts.test',
                 'supplier_address' => 'Barangay San Isidro, Tarlac City, Tarlac',
-                'supplier_payment_terms' => 'Pick up',
                 'supplier_status' => 'Active',
-                'supplier_notes' => 'Reliable for premium belly and loin cuts. Prefers pick up confirmations before 5:00 AM.',
             ],
             [
                 'supplier_name' => 'South Valley Hog Farm',
@@ -31,9 +29,7 @@ class SupplierSeeder extends Seeder
                 'supplier_phone_number' => '09179876543',
                 'supplier_email' => 'purchasing@southvalley.test',
                 'supplier_address' => 'Maharlika Highway, Cabanatuan City, Nueva Ecija',
-                'supplier_payment_terms' => '7-day terms',
                 'supplier_status' => 'Active',
-                'supplier_notes' => 'Usually delivers larger mixed-cut batches on Tuesdays and Fridays.',
             ],
             [
                 'supplier_name' => 'North Ridge Meats',
@@ -42,9 +38,7 @@ class SupplierSeeder extends Seeder
                 'supplier_phone_number' => '09175557777',
                 'supplier_email' => null,
                 'supplier_address' => 'Purok 3, Urdaneta City, Pangasinan',
-                'supplier_payment_terms' => 'Weekly billing',
                 'supplier_status' => 'Inactive',
-                'supplier_notes' => 'Archived for now after repeated short-notice cancellations.',
             ],
             [
                 'supplier_name' => 'Green Pastures Livestock',
@@ -53,9 +47,7 @@ class SupplierSeeder extends Seeder
                 'supplier_phone_number' => null,
                 'supplier_email' => 'dispatch@greenpastures.test',
                 'supplier_address' => 'San Miguel, Bulacan',
-                'supplier_payment_terms' => '15-day terms',
                 'supplier_status' => 'Active',
-                'supplier_notes' => 'Best option for scheduled weekend restocks when extra lead time is available.',
             ],
         ];
 

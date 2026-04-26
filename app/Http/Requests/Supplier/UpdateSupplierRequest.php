@@ -21,9 +21,7 @@ class UpdateSupplierRequest extends FormRequest
             'supplier_phone_number' => ['nullable', 'string', 'max:20'],
             'supplier_email' => ['nullable', 'email', 'max:120'],
             'supplier_address' => ['nullable', 'string', 'max:255'],
-            'supplier_payment_terms' => ['nullable', 'string', 'max:80'],
             'supplier_status' => ['required', 'string', Rule::in(['Active', 'Inactive'])],
-            'supplier_notes' => ['nullable', 'string', 'max:500'],
         ];
     }
 
@@ -38,9 +36,7 @@ class UpdateSupplierRequest extends FormRequest
             'supplier_phone_number',
             'supplier_email',
             'supplier_address',
-            'supplier_payment_terms',
             'supplier_status',
-            'supplier_notes',
         ] as $field) {
             if (! $this->has($field)) {
                 continue;

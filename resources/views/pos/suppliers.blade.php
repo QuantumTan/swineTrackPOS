@@ -129,19 +129,6 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Payment Terms</label>
-                        <input
-                            type="text"
-                            name="supplier_payment_terms"
-                            class="form-control @error('supplier_payment_terms') is-invalid @enderror"
-                            value="{{ old('supplier_payment_terms') }}"
-                            placeholder="COD / 7-day terms"
-                        >
-                        @error('supplier_payment_terms')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
                     <div class="col-12 col-lg-8">
                         <label class="form-label fw-semibold">Business Address</label>
                         <input
@@ -152,18 +139,6 @@
                             placeholder="Barangay, city, province"
                         >
                         @error('supplier_address')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Supplier Notes</label>
-                        <textarea
-                            name="supplier_notes"
-                            class="form-control @error('supplier_notes') is-invalid @enderror"
-                            rows="3"
-                            placeholder="Delivery reminders, preferred cut types, schedule notes, or account concerns."
-                        >{{ old('supplier_notes') }}</textarea>
-                        @error('supplier_notes')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -194,7 +169,6 @@
                         <th>Phone</th>
                         <th>Email</th>
                         <th>Status</th>
-                        <th>Payment Terms</th>
                         <th>Deliveries</th>
                         <th>Last Delivery</th>
                         <th class="text-center">Actions</th>
@@ -222,7 +196,6 @@
                                     'type' => $supplier->status_type,
                                 ])
                             </td>
-                            <td class="supplier-cell-secondary">{{ $supplier->supplier_payment_terms ?: '-' }}</td>
                             <td class="fw-semibold">{{ $supplier->batches_count }}</td>
                             <td class="supplier-cell-secondary">{{ $supplier->formatted_last_delivery ?: '-' }}</td>
                             <td class="text-center supplier-table-actions">
@@ -235,7 +208,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="table-empty">No suppliers added yet. Start by creating a supplier profile with contact and purchasing details.</td>
+                            <td colspan="9" class="table-empty">No suppliers added yet. Start by creating a supplier profile with contact and purchasing details.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -296,10 +269,6 @@
                     <div class="fw-semibold">{{ $supplier->supplier_email ?: '-' }}</div>
                 </div>
                 <div class="supplier-detail-card">
-                    <div class="modal-detail-label">Payment Terms</div>
-                    <div class="fw-semibold">{{ $supplier->supplier_payment_terms ?: '-' }}</div>
-                </div>
-                <div class="supplier-detail-card">
                     <div class="modal-detail-label">Delivery Count</div>
                     <div class="fw-semibold">{{ $supplier->batches_count }}</div>
                 </div>
@@ -313,10 +282,6 @@
                 </div>
             </div>
 
-            <div class="supplier-notes-card">
-                <div class="modal-detail-label">Supplier Notes</div>
-                <p class="mb-0">{{ $supplier->supplier_notes ?: 'No supplier notes added yet.' }}</p>
-            </div>
         @endcomponent
 
         @component('pos.partials.modal', [
@@ -356,17 +321,9 @@
                         <label class="form-label fw-semibold">Email Address</label>
                         <input type="email" name="supplier_email" class="form-control" value="{{ $supplier->supplier_email }}">
                     </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Payment Terms</label>
-                        <input type="text" name="supplier_payment_terms" class="form-control" value="{{ $supplier->supplier_payment_terms }}">
-                    </div>
                     <div class="col-12 col-lg-8">
                         <label class="form-label fw-semibold">Business Address</label>
                         <input type="text" name="supplier_address" class="form-control" value="{{ $supplier->supplier_address }}">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Supplier Notes</label>
-                        <textarea name="supplier_notes" class="form-control" rows="3">{{ $supplier->supplier_notes }}</textarea>
                     </div>
                 </div>
 
