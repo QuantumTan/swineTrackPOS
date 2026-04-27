@@ -19,9 +19,7 @@ return new class extends Migration
             $table->string('supplier_phone_number', 20)->nullable();
             $table->string('supplier_email', 120)->nullable();
             $table->string('supplier_address', 255)->nullable();
-            $table->string('supplier_payment_terms', 80)->nullable();
             $table->enum('supplier_status', ['Active', 'Inactive'])->default('Active');
-            $table->text('supplier_notes')->nullable();
         });
     }
 
