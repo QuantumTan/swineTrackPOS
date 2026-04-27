@@ -78,7 +78,7 @@
         $productHeaderAside = new \Illuminate\Support\HtmlString(
             '<div class="section-header-pills">'
             . '<div class="toolbar-chip"><i class="bi bi-grid me-2"></i>'.$products->total().' total products</div>'
-            . '<div class="toolbar-chip"><i class="bi bi-box-seam me-2"></i>Stock quantity and status stay visible in the table</div>'
+            . '<div class="toolbar-chip"><i class="bi bi-box-seam me-2"></i>Catalog table view</div>'
             . '</div>'
         );
     @endphp
@@ -98,8 +98,6 @@
                         <th>Product Name</th>
                         <th>Category</th>
                         <th>Price per kg</th>
-                        <th>Current Stock</th>
-                        <th>Stock Status</th>
                         <th>Last Updated</th>
                         <th class="text-center">Actions</th>
                     </tr>
@@ -111,13 +109,6 @@
                             <td class="fw-semibold">{{ $product->product_name }}</td>
                             <td>{{ $product->product_category }}</td>
                             <td class="fw-semibold">{{ $product->formatted_price }}</td>
-                            <td class="fw-semibold">{{ $product->formatted_stock }}</td>
-                            <td>
-                                @include('pos.partials.status-pill', [
-                                    'label' => $product->stock_status['label'],
-                                    'type' => $product->stock_status['class'],
-                                ])
-                            </td>
                             <td>{{ $product->formatted_last_updated }}</td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
@@ -128,7 +119,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="table-empty">No products available yet.</td>
+                            <td colspan="6" class="table-empty">No products available yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
