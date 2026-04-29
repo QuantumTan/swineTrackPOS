@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -21,8 +22,8 @@ class Product extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'category_id',
         'product_name',
-        'product_category',
         'product_price_per_kilo',
     ];
 
@@ -30,7 +31,7 @@ class Product extends Model
     {
         return [
             'product_price_per_kilo' => 'decimal:2',
-            'current_stock_kg' => 'decimal:3',
+            'current_stock' => 'decimal:3',
             'last_updated_at' => 'datetime',
         ];
     }
@@ -39,10 +40,15 @@ class Product extends Model
     {
         static::created(function (Product $product): void {
             $product->inventory()->firstOrCreate([], [
-                'current_stock_kg' => 0,
+                'current_stock' => 0,
                 'last_updated_at' => now(),
             ]);
         });
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'category_id', 'category_id');
     }
 
     public function inventory(): HasOne
@@ -67,7 +73,7 @@ class Product extends Model
 
     public function getCurrentStockValueAttribute(): float
     {
-        return (float) ($this->current_stock_kg ?? 0);
+        return (float) ($this->current_stock ?? 0);
     }
 
     public function getFormattedPriceAttribute(): string
@@ -107,5 +113,10 @@ class Product extends Model
     public function getLatestSupplierDisplayAttribute(): string
     {
         return $this->latest_supplier ?: '-';
+    }
+
+    public function getCategoryNameAttribute(): string
+    {
+        return $this->category?->category_name ?? '-';
     }
 }

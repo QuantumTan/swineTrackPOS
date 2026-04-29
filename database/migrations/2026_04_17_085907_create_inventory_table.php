@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('inventory', function (Blueprint $table) {
             $table->increments('inventory_id');
             $table->unsignedInteger('product_id')->unique();
-            $table->decimal('current_stock_kg', 10, 3)->default(0);
+            $table->decimal('current_stock', 10, 3)->default(0);
             $table->dateTime('last_updated_at');
 
             $table->foreign('product_id')
@@ -28,7 +28,7 @@ return new class extends Migration
 
       
         if (DB::getDriverName() !== 'sqlite') {
-            DB::statement('ALTER TABLE inventory ADD CONSTRAINT chk_inventory_stock CHECK (current_stock_kg >= 0)');
+            DB::statement('ALTER TABLE inventory ADD CONSTRAINT chk_inventory_stock CHECK (current_stock >= 0)');
         }
 
     }

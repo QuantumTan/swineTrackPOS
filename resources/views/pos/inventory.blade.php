@@ -55,7 +55,7 @@
                         <tr>
                             <td class="text-secondary">{{ $item->display_id }}</td>
                             <td class="fw-semibold">{{ $item->product_name }}</td>
-                            <td>{{ $item->product_category }}</td>
+                            <td>{{ $item->category_name }}</td>
                             <td class="fw-semibold">{{ $item->formatted_stock }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [

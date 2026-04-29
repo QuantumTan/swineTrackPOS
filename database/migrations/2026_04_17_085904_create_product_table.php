@@ -14,11 +14,23 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::create('category', function (Blueprint $table) {
+            $table->increments('category_id');
+            $table->string('category_name', 50);
+            $table->string('category_description', 255)->nullable();
+        });
+
         Schema::create('product', function (Blueprint $table) {
             $table->increments('product_id');
+            $table->unsignedInteger('category_id');
             $table->string('product_name', 50);
-            $table->string('product_category', 30);
             $table->decimal('product_price_per_kilo', 10, 2);
+
+            $table->foreign('category_id')
+                ->references('category_id')
+                ->on('category')
+                ->restrictOnDelete()
+                ->cascadeOnUpdate();
         });
 
         if (DB::getDriverName() !== 'sqlite') {
@@ -32,5 +44,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('product');
+        Schema::dropIfExists('category');
     }
 };

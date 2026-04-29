@@ -18,14 +18,14 @@ class Inventory extends Model
 
     protected $fillable = [
         'product_id',
-        'current_stock_kg',
+        'current_stock',
         'last_updated_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'current_stock_kg' => 'decimal:3',
+            'current_stock' => 'decimal:3',
             'last_updated_at' => 'datetime',
         ];
     }

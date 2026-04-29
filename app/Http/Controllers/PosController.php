@@ -285,22 +285,23 @@ class PosController extends Controller
     public function inventory(): View
     {
         $latestSupplierSubquery = BatchItem::query()
-            ->join('batches', 'batches.batch_id', '=', 'batch_item.batch_id')
-            ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batches.supplier_id')
+            ->join('batch', 'batch.batch_id', '=', 'batch_item.batch_id')
+            ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batch.supplier_id')
             ->whereColumn('batch_item.product_id', 'product.product_id')
-            ->orderByDesc('batches.batch_date')
-            ->orderByDesc('batches.batch_id')
+            ->orderByDesc('batch.batch_date')
+            ->orderByDesc('batch.batch_id')
             ->selectRaw("
                 CASE
-                    WHEN batches.source_type = 'Own Livestock' THEN 'Own Livestock'
+                    WHEN batch.source_type = 'Own Livestock' THEN 'Own Livestock'
                     ELSE COALESCE(supplier.supplier_name, 'N/A')
                 END
             ")
             ->limit(1);
 
         $inventoryRows = Product::query()
+            ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock_kg', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
             ->selectSub($latestSupplierSubquery, 'latest_supplier')
             ->orderBy('product.product_id')
             ->paginate(10)
@@ -308,7 +309,7 @@ class PosController extends Controller
 
         $allInventoryRows = Product::query()
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.product_id', 'inventory.current_stock_kg')
+            ->select('product.product_id', 'inventory.current_stock')
             ->get();
 
         return view('pos.inventory', [
@@ -320,12 +321,12 @@ class PosController extends Controller
                 ],
                 [
                     'label' => 'In Stock',
-                    'value' => $allInventoryRows->filter(fn ($row) => (float) ($row->current_stock_kg ?? 0) > 0)->count(),
+                    'value' => $allInventoryRows->filter(fn ($row) => (float) ($row->current_stock ?? 0) > 0)->count(),
                 ],
                 [
                     'label' => 'Low Stock / Out',
                     'value' => $allInventoryRows->filter(
-                        fn ($row) => (float) ($row->current_stock_kg ?? 0) < Product::LOW_STOCK_THRESHOLD
+                        fn ($row) => (float) ($row->current_stock ?? 0) < Product::LOW_STOCK_THRESHOLD
                     )->count(),
                 ],
             ],
@@ -512,7 +513,7 @@ class PosController extends Controller
                 'kind' => 'View',
                 'name' => 'vw_product_inventory',
                 'description' => 'Inventory display for products, stock, price per kilo, update time, and computed stock status.',
-                'detail' => 'product_id, product_name, product_category, product_price_per_kilo, current_stock_kg, last_updated_at, stock_status',
+                'detail' => 'product_id, product_name, category_name, product_price_per_kilo, current_stock, last_updated_at, stock_status',
             ],
             [
                 'kind' => 'View',
@@ -536,13 +537,13 @@ class PosController extends Controller
                 'kind' => 'View',
                 'name' => 'vw_low_stock_products',
                 'description' => 'Products at or below the low-stock threshold for watchlists and reorder prompts.',
-                'detail' => 'product_id, product_name, current_stock_kg',
+                'detail' => 'product_id, product_name, current_stock',
             ],
             [
                 'kind' => 'Trigger',
                 'name' => 'trg_product_after_insert',
                 'description' => 'Creates the starting inventory row the moment a product is inserted.',
-                'detail' => 'AFTER INSERT ON product -> inventory(product_id, current_stock_kg = 0, last_updated_at = NOW())',
+                'detail' => 'AFTER INSERT ON product -> inventory(product_id, current_stock = 0, last_updated_at = NOW())',
             ],
         ];
     }
@@ -585,25 +586,25 @@ class PosController extends Controller
             [
                 'product_id' => 'P003',
                 'product_name' => 'Ground Pork',
-                'current_stock_kg' => '8.500 kg',
+                'current_stock' => '8.500 kg',
                 'status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
             [
                 'product_id' => 'P004',
                 'product_name' => 'Pork Ribs',
-                'current_stock_kg' => '4.250 kg',
+                'current_stock' => '4.250 kg',
                 'status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
             [
                 'product_id' => 'P005',
                 'product_name' => 'Pork Shoulder (Kasim)',
-                'current_stock_kg' => '0.000 kg',
+                'current_stock' => '0.000 kg',
                 'status' => ['label' => 'Out of Stock', 'class' => 'danger'],
             ],
             [
                 'product_id' => 'P006',
                 'product_name' => 'Pork Loin',
-                'current_stock_kg' => '9.750 kg',
+                'current_stock' => '9.750 kg',
                 'status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
         ];
@@ -618,36 +619,36 @@ class PosController extends Controller
             [
                 'product_id' => 'P001',
                 'product_name' => 'Pork Chop',
-                'product_category' => 'Premium Cuts',
+                'category_name' => 'Premium Cuts',
                 'product_price_per_kilo' => 'P315.00',
-                'current_stock_kg' => '28.000 kg',
+                'current_stock' => '28.000 kg',
                 'last_updated_at' => '20 Apr 2026, 06:30 AM',
                 'stock_status' => ['label' => 'In Stock', 'class' => 'success'],
             ],
             [
                 'product_id' => 'P002',
                 'product_name' => 'Pork Belly (Liempo)',
-                'product_category' => 'Premium Cuts',
+                'category_name' => 'Premium Cuts',
                 'product_price_per_kilo' => 'P330.00',
-                'current_stock_kg' => '16.500 kg',
+                'current_stock' => '16.500 kg',
                 'last_updated_at' => '20 Apr 2026, 06:15 AM',
                 'stock_status' => ['label' => 'In Stock', 'class' => 'success'],
             ],
             [
                 'product_id' => 'P003',
                 'product_name' => 'Ground Pork',
-                'product_category' => 'Ground Meat',
+                'category_name' => 'Ground Meat',
                 'product_price_per_kilo' => 'P255.00',
-                'current_stock_kg' => '8.500 kg',
+                'current_stock' => '8.500 kg',
                 'last_updated_at' => '20 Apr 2026, 05:55 AM',
                 'stock_status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
             [
                 'product_id' => 'P005',
                 'product_name' => 'Pork Shoulder (Kasim)',
-                'product_category' => 'Standard Cuts',
+                'category_name' => 'Standard Cuts',
                 'product_price_per_kilo' => 'P285.00',
-                'current_stock_kg' => '0.000 kg',
+                'current_stock' => '0.000 kg',
                 'last_updated_at' => '20 Apr 2026, 05:40 AM',
                 'stock_status' => ['label' => 'Out of Stock', 'class' => 'danger'],
             ],

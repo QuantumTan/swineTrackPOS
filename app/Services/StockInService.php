@@ -203,10 +203,10 @@ class StockInService
     private function applyInventoryDelta(int $productId, float $delta): void
     {
         $inventory = Inventory::firstOrNew(['product_id' => $productId]);
-        $currentStock = (float) ($inventory->current_stock_kg ?? 0);
+        $currentStock = (float) ($inventory->current_stock ?? 0);
 
         $inventory->product_id = $productId;
-        $inventory->current_stock_kg = max(0, round($currentStock + $delta, 3));
+        $inventory->current_stock = max(0, round($currentStock + $delta, 3));
         $inventory->last_updated_at = now();
         $inventory->save();
     }

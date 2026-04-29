@@ -16,12 +16,12 @@ class UpdateSupplierRequest extends FormRequest
     {
         return [
             'supplier_name' => ['required', 'string', 'max:100'],
-            'supplier_contact_first_name' => ['nullable', 'string', 'max:50'],
-            'supplier_contact_last_name' => ['nullable', 'string', 'max:50'],
-            'supplier_phone_number' => ['nullable', 'string', 'max:20'],
-            'supplier_email' => ['nullable', 'email', 'max:120'],
-            'supplier_address' => ['nullable', 'string', 'max:255'],
-            'supplier_status' => ['required', 'string', Rule::in(['Active', 'Inactive'])],
+            'contact_person_first_name' => ['nullable', 'string', 'max:50'],
+            'contact_person_last_name' => ['nullable', 'string', 'max:50'],
+            'contact_number' => ['nullable', 'string', 'max:20'],
+            'status' => ['required', 'string', Rule::in(['Active', 'Inactive'])],
+            'email_address' => ['nullable', 'email', 'max:120'],
+            'business_address' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -31,12 +31,12 @@ class UpdateSupplierRequest extends FormRequest
 
         foreach ([
             'supplier_name',
-            'supplier_contact_first_name',
-            'supplier_contact_last_name',
-            'supplier_phone_number',
-            'supplier_email',
-            'supplier_address',
-            'supplier_status',
+            'contact_person_first_name',
+            'contact_person_last_name',
+            'contact_number',
+            'status',
+            'email_address',
+            'business_address',
         ] as $field) {
             if (! $this->has($field)) {
                 continue;
@@ -55,8 +55,8 @@ class UpdateSupplierRequest extends FormRequest
             $payload[$field] = $value;
         }
 
-        if (! isset($payload['supplier_status']) || $payload['supplier_status'] === null) {
-            $payload['supplier_status'] = 'Active';
+        if (! isset($payload['status']) || $payload['status'] === null) {
+            $payload['status'] = 'Active';
         }
 
         $this->merge($payload);

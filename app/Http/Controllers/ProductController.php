@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\Category;
 use App\Models\Inventory;
 use App\Models\Product;
 use Illuminate\Database\QueryException;
@@ -19,8 +20,9 @@ class ProductController extends Controller
     public function index(): View
     {
         $products = Product::query()
+            ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock_kg', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
             ->orderBy('product.product_id')
             ->paginate(10)
             ->withQueryString();
@@ -87,15 +89,12 @@ class ProductController extends Controller
     }
 
     /**
-     * @return array<int, string>
+     * @return \Illuminate\Support\Collection<int, Category>
      */
-    private function categories(): array
+    private function categories()
     {
-        return [
-            'Premium Cuts',
-            'Ground Meat',
-            'Standard Cuts',
-            'Offal',
-        ];
+        return Category::query()
+            ->orderBy('category_name')
+            ->get();
     }
 }

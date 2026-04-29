@@ -16,7 +16,7 @@ class SupplierController extends Controller
         $suppliers = Supplier::query()
             ->withCount('batches')
             ->withMax('batches', 'batch_date')
-            ->orderByRaw("CASE WHEN supplier_status = 'Active' THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE WHEN status = 'Active' THEN 0 ELSE 1 END")
             ->orderBy('supplier_name')
             ->paginate(10);
 
@@ -25,15 +25,15 @@ class SupplierController extends Controller
             'supplierStats' => [
                 'total' => Supplier::query()->count(),
                 'active' => Supplier::query()
-                    ->where('supplier_status', 'Active')
+                    ->where('status', 'Active')
                     ->count(),
                 'contact_ready' => Supplier::query()
                     ->where(function ($query) {
-                        $query->whereNotNull('supplier_phone_number')
-                            ->where('supplier_phone_number', '!=', '')
+                        $query->whereNotNull('contact_number')
+                            ->where('contact_number', '!=', '')
                             ->orWhere(function ($emailQuery) {
-                                $emailQuery->whereNotNull('supplier_email')
-                                    ->where('supplier_email', '!=', '');
+                                $emailQuery->whereNotNull('email_address')
+                                    ->where('email_address', '!=', '');
                             });
                     })
                     ->count(),
