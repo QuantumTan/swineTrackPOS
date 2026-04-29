@@ -40,13 +40,13 @@
                     </div>
                     <div class="col-12 col-lg-6">
                         <label class="form-label fw-semibold">Category</label>
-                        <select name="product_category" class="form-select @error('product_category') is-invalid @enderror">
-                            <option selected>Select category</option>
+                        <select name="category_id" class="form-select @error('category_id') is-invalid @enderror">
+                            <option value="" selected>Select category</option>
                             @foreach ($categories as $category)
-                                <option @selected(old('product_category') === $category)>{{ $category }}</option>
+                                <option value="{{ $category->category_id }}" @selected((string) old('category_id') === (string) $category->category_id)>{{ $category->category_name }}</option>
                             @endforeach
                         </select>
-                        @error('product_category')
+                        @error('category_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -98,8 +98,6 @@
                         <th>Product Name</th>
                         <th>Category</th>
                         <th>Price per kg</th>
-                        <th>Current Stock</th>
-                        <th>Stock Status</th>
                         <th>Last Updated</th>
                         <th class="text-center">Actions</th>
                     </tr>
@@ -109,15 +107,8 @@
                         <tr>
                             <td class="text-secondary">{{ $product->display_id }}</td>
                             <td class="fw-semibold">{{ $product->product_name }}</td>
-                            <td>{{ $product->product_category }}</td>
+                            <td>{{ $product->category_name }}</td>
                             <td class="fw-semibold">{{ $product->formatted_price }}</td>
-                            <td class="fw-semibold">{{ $product->formatted_stock }}</td>
-                            <td>
-                                @include('pos.partials.status-pill', [
-                                    'label' => $product->stock_status['label'],
-                                    'type' => $product->stock_status['class'],
-                                ])
-                            </td>
                             <td>{{ $product->formatted_last_updated }}</td>
                             <td class="text-center">
                                 @include('pos.partials.table-actions', [
@@ -128,7 +119,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="table-empty">No products available yet.</td>
+                            <td colspan="6" class="table-empty">No products available yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -159,9 +150,9 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Category</label>
-                        <select name="product_category" class="form-select">
+                        <select name="category_id" class="form-select">
                             @foreach ($categories as $category)
-                                <option @selected(old('product_category', $product->product_category) === $category)>{{ $category }}</option>
+                                <option value="{{ $category->category_id }}" @selected((string) old('category_id', $product->category_id) === (string) $category->category_id)>{{ $category->category_name }}</option>
                             @endforeach
                         </select>
                     </div>

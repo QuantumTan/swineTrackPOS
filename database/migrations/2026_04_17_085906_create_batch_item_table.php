@@ -21,7 +21,7 @@ return new class extends Migration
 
             $table->foreign('batch_id')
                 ->references('batch_id')
-                ->on('batches')
+                ->on('batch')
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
 

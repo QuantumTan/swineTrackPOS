@@ -12,7 +12,7 @@ class Batch extends Model
 {
     use HasFactory;
 
-    protected $table = 'batches';
+    protected $table = 'batch';
 
     protected $primaryKey = 'batch_id';
 

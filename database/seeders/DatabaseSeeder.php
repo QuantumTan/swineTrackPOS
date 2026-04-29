@@ -20,10 +20,11 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'user_email' => 'test@swinetrack.local',
-            'user_password' => Hash::make('password123'),
+            'user_password_hash' => Hash::make('password123'),
         ]);
 
         $this->call([
+            ProductSeeder::class,
             SupplierSeeder::class,
         ]);
     }

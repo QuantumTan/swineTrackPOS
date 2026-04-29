@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
 {
-Schema::create('batches', function (Blueprint $table) {
+Schema::create('batch', function (Blueprint $table) {
             $table->increments('batch_id');
             $table->unsignedInteger('supplier_id')->nullable();
             $table->unsignedInteger('user_id');
@@ -28,7 +28,7 @@ Schema::create('batches', function (Blueprint $table) {
 
             $table->foreign('user_id')
                 ->references('user_id')
-                ->on('users')
+                ->on('user')
                 ->restrictOnDelete()
                 ->cascadeOnUpdate();
         });
@@ -39,6 +39,6 @@ Schema::create('batches', function (Blueprint $table) {
      */
     public function down(): void
     {
-        Schema::dropIfExists('batches');
+        Schema::dropIfExists('batch');
     }
 };

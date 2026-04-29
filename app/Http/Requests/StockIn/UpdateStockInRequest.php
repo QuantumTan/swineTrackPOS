@@ -28,7 +28,7 @@ class UpdateStockInRequest extends FormRequest
                 'nullable',
                 'integer',
                 Rule::exists('supplier', 'supplier_id')->where(function ($query) {
-                    $query->where('supplier_status', 'Active');
+                    $query->where('status', 'Active');
 
                     $batch = $this->route('batch');
 

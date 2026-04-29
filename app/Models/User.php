@@ -14,6 +14,8 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    protected $table = 'user';
+
     protected $primaryKey = 'user_id';
 
     public $timestamps = false;
@@ -25,7 +27,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'user_email',
-        'user_password',
+        'user_password_hash',
         'remember_token',
     ];
 
@@ -35,7 +37,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'user_password',
+        'user_password_hash',
         'remember_token',
     ];
 
@@ -47,18 +49,33 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'user_password' => 'hashed',
+            'user_password_hash' => 'hashed',
         ];
     }
 
     public function getAuthPassword(): string
     {
-        return $this->user_password;
+        return $this->user_password_hash;
+    }
+
+    public function getAuthPasswordName(): string
+    {
+        return 'user_password_hash';
     }
 
     public function getEmailForPasswordReset(): string
     {
         return $this->user_email;
+    }
+
+    public function getEmailAttribute(): ?string
+    {
+        return $this->user_email;
+    }
+
+    public function getPasswordAttribute(): ?string
+    {
+        return $this->user_password_hash;
     }
 
     public function batches(): HasMany

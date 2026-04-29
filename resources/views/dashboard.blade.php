@@ -147,7 +147,7 @@
                                 <tr>
                                     <td class="text-secondary">{{ $item['product_id'] }}</td>
                                     <td class="fw-semibold">{{ $item['product_name'] }}</td>
-                                    <td>{{ $item['current_stock_kg'] }}</td>
+                                    <td>{{ $item['current_stock'] }}</td>
                                     <td>
                                         @include('pos.partials.status-pill', [
                                             'label' => $item['stock_status']['label'],

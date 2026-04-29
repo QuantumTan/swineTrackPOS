@@ -17,6 +17,7 @@
             'label' => 'Management',
             'items' => [
                 ['label' => 'Products', 'route' => 'products.index', 'icon' => 'bi-box-seam'],
+                ['label' => 'Categories', 'route' => 'categories.index', 'icon' => 'bi-tags'],
                 ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'bi-truck'],
             ],
         ],
