@@ -188,3 +188,256 @@ document.querySelectorAll('form').forEach((form) => {
         toggleSupplierField(form);
     });
 });
+
+const requestPosFullscreen = () => {
+    const target = document.documentElement;
+
+    if (!target.requestFullscreen || document.fullscreenElement) {
+        return;
+    }
+
+    target.requestFullscreen().catch(() => {});
+};
+
+document.querySelectorAll('[data-pos-entry]').forEach((link) => {
+    link.addEventListener('click', () => {
+        requestPosFullscreen();
+    });
+});
+
+document.querySelectorAll('[data-pos-fullscreen]').forEach((button) => {
+    button.addEventListener('click', requestPosFullscreen);
+});
+
+document.querySelectorAll('[data-pos-exit]').forEach((link) => {
+    link.addEventListener('click', () => {
+        if (document.fullscreenElement && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        }
+    });
+});
+
+const receiptElement = document.querySelector('[data-pos-receipt]');
+if (receiptElement) {
+    receiptElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const pesoFormatter = new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+});
+
+const posClockFormatter = {
+    date: new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+    }),
+    time: new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+    }),
+};
+
+document.querySelectorAll('[data-pos-form]').forEach((form) => {
+    const cart = new Map();
+    const cartElement = form.querySelector('[data-pos-cart]');
+    const emptyCartElement = form.querySelector('[data-pos-empty-cart]');
+    const countElement = form.querySelector('[data-pos-cart-count]');
+    const hiddenFieldsElement = form.querySelector('[data-pos-hidden-fields]');
+    const cashInput = form.querySelector('[data-pos-cash]');
+    const submitButton = form.querySelector('[data-pos-submit]');
+    const timeElement = form.querySelector('[data-pos-time]');
+    const dateElement = form.querySelector('[data-pos-date]');
+
+    const formatPeso = (amount) => pesoFormatter.format(amount).replace('PHP', 'P');
+
+    const total = () => Array.from(cart.values()).reduce((sum, item) => sum + item.qty * item.price, 0);
+
+    const syncClock = () => {
+        if (!timeElement || !dateElement) {
+            return;
+        }
+
+        const now = new Date();
+        timeElement.textContent = posClockFormatter.time.format(now);
+        dateElement.textContent = posClockFormatter.date.format(now);
+    };
+
+    const renderCart = () => {
+        cartElement.querySelectorAll('[data-pos-cart-item]').forEach((item) => item.remove());
+
+        Array.from(cart.values()).forEach((item) => {
+            const row = document.createElement('article');
+            row.className = 'terminal-cart-card';
+            row.setAttribute('data-pos-cart-item', item.id);
+            row.innerHTML = `
+                <div class="terminal-cart-top">
+                    <div>
+                        <h4 class="terminal-product-name">${item.name}</h4>
+                        <div class="terminal-product-category">${formatPeso(item.price)}/kg</div>
+                    </div>
+                    <button type="button" class="terminal-trash-button" data-pos-remove="${item.id}" aria-label="Remove ${item.name}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+
+                <div class="terminal-cart-bottom">
+                    <div class="terminal-qty-group">
+                        <button type="button" class="terminal-qty-button" data-pos-decrement="${item.id}">-</button>
+                        <input class="terminal-qty-value terminal-qty-input" inputmode="decimal" min="0.001" max="${item.stock}" value="${item.qty.toFixed(3)}" data-pos-qty="${item.id}">
+                        <button type="button" class="terminal-qty-button" data-pos-increment="${item.id}">+</button>
+                    </div>
+                    <div class="terminal-line-total">${formatPeso(item.qty * item.price)}</div>
+                </div>
+            `;
+            cartElement.appendChild(row);
+        });
+
+        const cartTotal = total();
+        const cash = Number.parseFloat(cashInput.value || '0') || 0;
+        const hasItems = cart.size > 0;
+
+        emptyCartElement.style.display = hasItems ? 'none' : '';
+        countElement.textContent = String(cart.size);
+
+        form.querySelectorAll('[data-pos-subtotal], [data-pos-total]').forEach((element) => {
+            element.textContent = formatPeso(cartTotal);
+        });
+
+        form.querySelector('[data-pos-change]').textContent = formatPeso(Math.max(cash - cartTotal, 0));
+        submitButton.disabled = !hasItems || cash < cartTotal;
+
+        hiddenFieldsElement.innerHTML = '';
+        Array.from(cart.values()).forEach((item, index) => {
+            hiddenFieldsElement.insertAdjacentHTML('beforeend', `
+                <input type="hidden" name="items[${index}][product_id]" value="${item.id}">
+                <input type="hidden" name="items[${index}][qty_sold_kg]" value="${item.qty.toFixed(3)}">
+            `);
+        });
+    };
+
+    const addProduct = (button) => {
+        const id = button.dataset.productId;
+        const existing = cart.get(id);
+        const stock = Number.parseFloat(button.dataset.productStock || '0');
+        const nextQty = existing ? existing.qty + 0.25 : 0.25;
+
+        if (nextQty > stock) {
+            return;
+        }
+
+        cart.set(id, {
+            id,
+            name: button.dataset.productName,
+            category: button.dataset.productCategory,
+            price: Number.parseFloat(button.dataset.productPrice || '0'),
+            stock,
+            qty: nextQty,
+        });
+
+        renderCart();
+    };
+
+    form.querySelectorAll('[data-pos-product]').forEach((button) => {
+        button.addEventListener('click', () => addProduct(button));
+    });
+
+    form.addEventListener('click', (event) => {
+        const target = event.target;
+        const removeButton = target.closest('[data-pos-remove]');
+        const incrementButton = target.closest('[data-pos-increment]');
+        const decrementButton = target.closest('[data-pos-decrement]');
+
+        if (removeButton) {
+            cart.delete(removeButton.dataset.posRemove);
+            renderCart();
+        }
+
+        if (incrementButton) {
+            const item = cart.get(incrementButton.dataset.posIncrement);
+            if (item && item.qty + 0.25 <= item.stock) {
+                item.qty += 0.25;
+                renderCart();
+            }
+        }
+
+        if (decrementButton) {
+            const item = cart.get(decrementButton.dataset.posDecrement);
+            if (item) {
+                item.qty -= 0.25;
+                if (item.qty <= 0) {
+                    cart.delete(item.id);
+                }
+                renderCart();
+            }
+        }
+    });
+
+    form.addEventListener('input', (event) => {
+        const qtyInput = event.target.closest('[data-pos-qty]');
+        const searchInput = event.target.closest('[data-pos-search]');
+
+        if (qtyInput) {
+            const item = cart.get(qtyInput.dataset.posQty);
+            const qty = Number.parseFloat(qtyInput.value);
+
+            if (item && Number.isFinite(qty) && qty > 0) {
+                item.qty = Math.min(qty, item.stock);
+                renderCart();
+            }
+        }
+
+        if (searchInput) {
+            const query = searchInput.value.trim().toLowerCase();
+            form.querySelectorAll('[data-pos-product]').forEach((button) => {
+                const haystack = `${button.dataset.productName} ${button.dataset.productCategory}`.toLowerCase();
+                button.style.display = haystack.includes(query) ? '' : 'none';
+            });
+        }
+
+        if (event.target === cashInput) {
+            renderCart();
+        }
+    });
+
+    form.querySelectorAll('[data-pos-cash-shortcut]').forEach((button) => {
+        button.addEventListener('click', () => {
+            cashInput.value = button.dataset.posCashShortcut;
+            renderCart();
+        });
+    });
+
+    form.querySelectorAll('[data-pos-key]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const key = button.dataset.posKey;
+            cashInput.value = key === 'CLR' ? '' : `${cashInput.value}${key}`;
+            renderCart();
+        });
+    });
+
+    form.querySelector('[data-pos-clear]').addEventListener('click', () => {
+        cart.clear();
+        renderCart();
+    });
+
+    form.addEventListener('submit', () => {
+        form.querySelectorAll('[data-pos-qty]').forEach((qtyInput) => {
+            const item = cart.get(qtyInput.dataset.posQty);
+            const qty = Number.parseFloat(qtyInput.value);
+
+            if (!item || !Number.isFinite(qty) || qty <= 0) {
+                return;
+            }
+
+            item.qty = Math.min(qty, item.stock);
+        });
+
+        renderCart();
+    });
+
+    syncClock();
+    window.setInterval(syncClock, 1000);
+    renderCart();
+});

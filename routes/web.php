@@ -20,6 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::controller(PosController::class)->group(function () {
         Route::get('/dashboard', 'dashboard')->name('dashboard');
         Route::get('/sales', 'sales')->name('sales.index');
+        Route::post('/sales', 'storeSale')->name('sales.store');
         Route::get('/inventory', 'inventory')->name('inventory.index');
         Route::get('/reports', 'reports')->name('reports.index');
     });
