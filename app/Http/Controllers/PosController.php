@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\BatchItem;
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -326,8 +327,14 @@ class PosController extends Controller
         ]);
     }
 
-    public function inventory(): View
+    public function inventory(Request $request): View
     {
+        $filters = [
+            'search' => trim((string) $request->query('search', '')),
+            'category_id' => (string) $request->query('category_id', ''),
+            'stock_status' => (string) $request->query('stock_status', ''),
+        ];
+
         $latestSupplierSubquery = BatchItem::query()
             ->join('batch', 'batch.batch_id', '=', 'batch_item.batch_id')
             ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batch.supplier_id')
@@ -347,6 +354,36 @@ class PosController extends Controller
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
             ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
             ->selectSub($latestSupplierSubquery, 'latest_supplier')
+            ->when($filters['search'] !== '', function ($query) use ($filters) {
+                $query->where(function ($searchQuery) use ($filters) {
+                    $searchQuery
+                        ->where('product.product_name', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('product.product_id', (int) $filters['search'])
+                        ->orWhereExists(function ($supplierQuery) use ($filters) {
+                            $supplierQuery
+                                ->select(DB::raw(1))
+                                ->from('batch_item')
+                                ->join('batch', 'batch.batch_id', '=', 'batch_item.batch_id')
+                                ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batch.supplier_id')
+                                ->whereColumn('batch_item.product_id', 'product.product_id')
+                                ->where('supplier.supplier_name', 'like', '%'.$filters['search'].'%');
+                        });
+                });
+            })
+            ->when($filters['category_id'] !== '', fn ($query) => $query->where('product.category_id', $filters['category_id']))
+            ->when($filters['stock_status'] !== '', function ($query) use ($filters) {
+                if ($filters['stock_status'] === 'in_stock') {
+                    $query->where('inventory.current_stock', '>=', Product::LOW_STOCK_THRESHOLD);
+                } elseif ($filters['stock_status'] === 'low_stock') {
+                    $query->where('inventory.current_stock', '>', 0)
+                        ->where('inventory.current_stock', '<', Product::LOW_STOCK_THRESHOLD);
+                } elseif ($filters['stock_status'] === 'out_of_stock') {
+                    $query->where(function ($stockQuery) {
+                        $stockQuery->whereNull('inventory.current_stock')
+                            ->orWhere('inventory.current_stock', '<=', 0);
+                    });
+                }
+            })
             ->orderBy('product.product_id')
             ->paginate(10)
             ->withQueryString();
@@ -358,6 +395,8 @@ class PosController extends Controller
 
         return view('pos.inventory', [
             'inventoryItems' => $inventoryRows,
+            'filters' => $filters,
+            'categories' => Category::query()->orderBy('category_name')->get(),
             'summary' => [
                 [
                     'label' => 'Total Products',

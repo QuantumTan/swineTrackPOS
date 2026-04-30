@@ -7,21 +7,44 @@ use App\Http\Requests\Supplier\UpdateSupplierRequest;
 use App\Models\Supplier;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class SupplierController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filters = [
+            'search' => trim((string) $request->query('search', '')),
+            'status' => (string) $request->query('status', ''),
+            'delivery' => (string) $request->query('delivery', ''),
+        ];
+
         $suppliers = Supplier::query()
             ->withCount('batches')
             ->withMax('batches', 'batch_date')
+            ->when($filters['search'] !== '', function ($query) use ($filters) {
+                $query->where(function ($searchQuery) use ($filters) {
+                    $searchQuery
+                        ->where('supplier_name', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('contact_person_first_name', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('contact_person_last_name', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('contact_number', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('email_address', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('supplier_id', (int) $filters['search']);
+                });
+            })
+            ->when($filters['status'] !== '', fn ($query) => $query->where('status', $filters['status']))
+            ->when($filters['delivery'] === 'with_history', fn ($query) => $query->whereHas('batches'))
+            ->when($filters['delivery'] === 'no_history', fn ($query) => $query->whereDoesntHave('batches'))
             ->orderByRaw("CASE WHEN status = 'Active' THEN 0 ELSE 1 END")
             ->orderBy('supplier_name')
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
         return view('pos.suppliers', [
             'suppliers' => $suppliers,
+            'filters' => $filters,
             'supplierStats' => [
                 'total' => Supplier::query()->count(),
                 'active' => Supplier::query()

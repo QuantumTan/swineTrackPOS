@@ -7,20 +7,37 @@ use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CategoryController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filters = [
+            'search' => trim((string) $request->query('search', '')),
+            'usage' => (string) $request->query('usage', ''),
+        ];
+
         $categories = Category::query()
             ->withCount('products')
+            ->when($filters['search'] !== '', function ($query) use ($filters) {
+                $query->where(function ($searchQuery) use ($filters) {
+                    $searchQuery
+                        ->where('category_name', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('category_description', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('category_id', (int) $filters['search']);
+                });
+            })
+            ->when($filters['usage'] === 'with_products', fn ($query) => $query->has('products'))
+            ->when($filters['usage'] === 'empty', fn ($query) => $query->doesntHave('products'))
             ->orderBy('category_name')
             ->paginate(10)
             ->withQueryString();
 
         return view('pos.categories', [
             'categories' => $categories,
+            'filters' => $filters,
             'categoryStats' => [
                 'total' => Category::query()->count(),
                 'with_products' => Category::query()->has('products')->count(),
