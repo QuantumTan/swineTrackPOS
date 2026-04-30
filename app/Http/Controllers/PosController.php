@@ -74,7 +74,7 @@ class PosController extends Controller
         if (! $batch) {
             return back()
                 ->withInput()
-                ->with('error', 'No active stock-in batch has enough remaining quantity for every cart item.');
+                ->with('error', 'No stock-in batch has enough remaining quantity for every cart item.');
         }
 
         try {
@@ -213,8 +213,7 @@ class PosController extends Controller
      */
     private function findBatchForSale($items): ?Batch
     {
-        $query = Batch::query()
-            ->where('batch_status', '!=', 'Closed');
+        $query = Batch::query();
 
         foreach ($items as $item) {
             $query->whereHas('items', fn ($batchItems) => $batchItems
@@ -223,6 +222,7 @@ class PosController extends Controller
         }
 
         return $query
+            ->orderByRaw("CASE WHEN batch_status = 'Closed' THEN 1 ELSE 0 END")
             ->latest('batch_date')
             ->latest('batch_id')
             ->first();
