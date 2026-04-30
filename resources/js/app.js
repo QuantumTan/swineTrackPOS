@@ -313,6 +313,22 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
     const dateElement = form.querySelector('[data-pos-date]');
 
     const formatPeso = (amount) => pesoFormatter.format(amount).replace('PHP', 'P');
+    const roundQty = (value) => Math.round(value * 1000) / 1000;
+    const parseQtyValue = (value) => {
+        const sanitized = String(value ?? '').trim().replace(',', '.');
+
+        if (sanitized === '' || sanitized === '.') {
+            return null;
+        }
+
+        const parsed = Number.parseFloat(sanitized);
+
+        if (!Number.isFinite(parsed)) {
+            return null;
+        }
+
+        return roundQty(parsed);
+    };
 
     const total = () => Array.from(cart.values()).reduce((sum, item) => sum + item.qty * item.price, 0);
 
@@ -427,7 +443,7 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
         const id = button.dataset.productId;
         const existing = cart.get(id);
         const stock = Number.parseFloat(button.dataset.productStock || '0');
-        const nextQty = existing ? existing.qty + 0.25 : 0.25;
+        const nextQty = existing ? roundQty(existing.qty + 0.25) : 0.25;
 
         if (nextQty > stock) {
             return;
@@ -442,6 +458,34 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
             qty: nextQty,
         });
 
+        renderCart();
+    };
+
+    const commitQtyInput = (qtyInput, { removeWhenZero = false } = {}) => {
+        const item = cart.get(qtyInput.dataset.posQty);
+
+        if (!item) {
+            return;
+        }
+
+        const qty = parseQtyValue(qtyInput.value);
+
+        if (qty === null) {
+            qtyInput.value = item.qty.toFixed(3);
+            return;
+        }
+
+        if (qty <= 0) {
+            if (removeWhenZero) {
+                cart.delete(item.id);
+                renderCart();
+            } else {
+                qtyInput.value = item.qty.toFixed(3);
+            }
+            return;
+        }
+
+        item.qty = Math.min(qty, item.stock);
         renderCart();
     };
 
@@ -462,8 +506,8 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
 
         if (incrementButton) {
             const item = cart.get(incrementButton.dataset.posIncrement);
-            if (item && item.qty + 0.25 <= item.stock) {
-                item.qty += 0.25;
+            if (item && roundQty(item.qty + 0.25) <= item.stock) {
+                item.qty = roundQty(item.qty + 0.25);
                 renderCart();
             }
         }
@@ -471,7 +515,7 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
         if (decrementButton) {
             const item = cart.get(decrementButton.dataset.posDecrement);
             if (item) {
-                item.qty -= 0.25;
+                item.qty = roundQty(item.qty - 0.25);
                 if (item.qty <= 0) {
                     cart.delete(item.id);
                 }
@@ -481,18 +525,7 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
     });
 
     form.addEventListener('input', (event) => {
-        const qtyInput = event.target.closest('[data-pos-qty]');
         const searchInput = event.target.closest('[data-pos-search]');
-
-        if (qtyInput) {
-            const item = cart.get(qtyInput.dataset.posQty);
-            const qty = Number.parseFloat(qtyInput.value);
-
-            if (item && Number.isFinite(qty) && qty > 0) {
-                item.qty = Math.min(qty, item.stock);
-                renderCart();
-            }
-        }
 
         if (searchInput) {
             const query = searchInput.value.trim().toLowerCase();
@@ -504,6 +537,14 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
 
         if (event.target === cashInput) {
             renderCart();
+        }
+    });
+
+    form.addEventListener('change', (event) => {
+        const qtyInput = event.target.closest('[data-pos-qty]');
+
+        if (qtyInput) {
+            commitQtyInput(qtyInput, { removeWhenZero: true });
         }
     });
 
@@ -530,9 +571,9 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
     form.addEventListener('submit', () => {
         form.querySelectorAll('[data-pos-qty]').forEach((qtyInput) => {
             const item = cart.get(qtyInput.dataset.posQty);
-            const qty = Number.parseFloat(qtyInput.value);
+            const qty = parseQtyValue(qtyInput.value);
 
-            if (!item || !Number.isFinite(qty) || qty <= 0) {
+            if (!item || qty === null || qty <= 0) {
                 return;
             }
 
