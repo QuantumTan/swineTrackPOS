@@ -37,6 +37,39 @@ const setInvalidState = (element, isInvalid) => {
     element.classList.toggle('is-invalid', isInvalid);
 };
 
+const createElement = (tagName, { className, textContent, attributes } = {}) => {
+    const element = document.createElement(tagName);
+
+    if (className) {
+        element.className = className;
+    }
+
+    if (textContent !== undefined) {
+        element.textContent = textContent;
+    }
+
+    Object.entries(attributes || {}).forEach(([name, value]) => {
+        element.setAttribute(name, String(value));
+    });
+
+    return element;
+};
+
+const createTableCell = (attributeName, textContent) => createElement('td', {
+    textContent,
+    attributes: {
+        [attributeName]: '',
+    },
+});
+
+const createHiddenInput = (name, value) => createElement('input', {
+    attributes: {
+        type: 'hidden',
+        name,
+        value,
+    },
+});
+
 const syncItemHiddenNames = (tbody) => {
     const rows = tbody.querySelectorAll('tr[data-item-row]');
 
@@ -70,18 +103,46 @@ const createItemTableRow = ({ productId, productLabel, qty, cost }) => {
 
     const lineTotal = qty * cost;
 
-    row.innerHTML = `
-        <td data-item-label>${productLabel}</td>
-        <td data-item-qty>${qty.toFixed(3)}</td>
-        <td data-item-cost>P${cost.toFixed(2)}</td>
-        <td data-item-total>P${lineTotal.toFixed(2)}</td>
-        <td class="text-center">
-            <button type="button" class="btn btn-outline-danger btn-sm" data-item-remove>Remove</button>
-        </td>
-        <input type="hidden" data-item-hidden="product_id" value="${productId}">
-        <input type="hidden" data-item-hidden="qty_in_kg" value="${qty}">
-        <input type="hidden" data-item-hidden="cost_per_kg" value="${cost}">
-    `;
+    const actionCell = createElement('td', { className: 'text-center' });
+    const removeButton = createElement('button', {
+        className: 'btn btn-outline-danger btn-sm',
+        textContent: 'Remove',
+        attributes: {
+            type: 'button',
+            'data-item-remove': '',
+        },
+    });
+
+    actionCell.appendChild(removeButton);
+
+    row.append(
+        createTableCell('data-item-label', productLabel),
+        createTableCell('data-item-qty', qty.toFixed(3)),
+        createTableCell('data-item-cost', `P${cost.toFixed(2)}`),
+        createTableCell('data-item-total', `P${lineTotal.toFixed(2)}`),
+        actionCell,
+        createElement('input', {
+            attributes: {
+                type: 'hidden',
+                'data-item-hidden': 'product_id',
+                value: productId,
+            },
+        }),
+        createElement('input', {
+            attributes: {
+                type: 'hidden',
+                'data-item-hidden': 'qty_in_kg',
+                value: qty,
+            },
+        }),
+        createElement('input', {
+            attributes: {
+                type: 'hidden',
+                'data-item-hidden': 'cost_per_kg',
+                value: cost,
+            },
+        }),
+    );
 
     return row;
 };
@@ -272,26 +333,70 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
             const row = document.createElement('article');
             row.className = 'terminal-cart-card';
             row.setAttribute('data-pos-cart-item', item.id);
-            row.innerHTML = `
-                <div class="terminal-cart-top">
-                    <div>
-                        <h4 class="terminal-product-name">${item.name}</h4>
-                        <div class="terminal-product-category">${formatPeso(item.price)}/kg</div>
-                    </div>
-                    <button type="button" class="terminal-trash-button" data-pos-remove="${item.id}" aria-label="Remove ${item.name}">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
 
-                <div class="terminal-cart-bottom">
-                    <div class="terminal-qty-group">
-                        <button type="button" class="terminal-qty-button" data-pos-decrement="${item.id}">-</button>
-                        <input class="terminal-qty-value terminal-qty-input" inputmode="decimal" min="0.001" max="${item.stock}" value="${item.qty.toFixed(3)}" data-pos-qty="${item.id}">
-                        <button type="button" class="terminal-qty-button" data-pos-increment="${item.id}">+</button>
-                    </div>
-                    <div class="terminal-line-total">${formatPeso(item.qty * item.price)}</div>
-                </div>
-            `;
+            const top = createElement('div', { className: 'terminal-cart-top' });
+            const productCopy = document.createElement('div');
+            productCopy.append(
+                createElement('h4', {
+                    className: 'terminal-product-name',
+                    textContent: item.name,
+                }),
+                createElement('div', {
+                    className: 'terminal-product-category',
+                    textContent: `${formatPeso(item.price)}/kg`,
+                }),
+            );
+
+            const removeButton = createElement('button', {
+                className: 'terminal-trash-button',
+                attributes: {
+                    type: 'button',
+                    'data-pos-remove': item.id,
+                    'aria-label': `Remove ${item.name}`,
+                },
+            });
+            removeButton.appendChild(createElement('i', { className: 'bi bi-trash' }));
+            top.append(productCopy, removeButton);
+
+            const bottom = createElement('div', { className: 'terminal-cart-bottom' });
+            const qtyGroup = createElement('div', { className: 'terminal-qty-group' });
+            qtyGroup.append(
+                createElement('button', {
+                    className: 'terminal-qty-button',
+                    textContent: '-',
+                    attributes: {
+                        type: 'button',
+                        'data-pos-decrement': item.id,
+                    },
+                }),
+                createElement('input', {
+                    className: 'terminal-qty-value terminal-qty-input',
+                    attributes: {
+                        inputmode: 'decimal',
+                        min: '0.001',
+                        max: item.stock,
+                        value: item.qty.toFixed(3),
+                        'data-pos-qty': item.id,
+                    },
+                }),
+                createElement('button', {
+                    className: 'terminal-qty-button',
+                    textContent: '+',
+                    attributes: {
+                        type: 'button',
+                        'data-pos-increment': item.id,
+                    },
+                }),
+            );
+            bottom.append(
+                qtyGroup,
+                createElement('div', {
+                    className: 'terminal-line-total',
+                    textContent: formatPeso(item.qty * item.price),
+                }),
+            );
+
+            row.append(top, bottom);
             cartElement.appendChild(row);
         });
 
@@ -309,12 +414,12 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
         form.querySelector('[data-pos-change]').textContent = formatPeso(Math.max(cash - cartTotal, 0));
         submitButton.disabled = !hasItems || cash < cartTotal;
 
-        hiddenFieldsElement.innerHTML = '';
+        hiddenFieldsElement.replaceChildren();
         Array.from(cart.values()).forEach((item, index) => {
-            hiddenFieldsElement.insertAdjacentHTML('beforeend', `
-                <input type="hidden" name="items[${index}][product_id]" value="${item.id}">
-                <input type="hidden" name="items[${index}][qty_sold_kg]" value="${item.qty.toFixed(3)}">
-            `);
+            hiddenFieldsElement.append(
+                createHiddenInput(`items[${index}][product_id]`, item.id),
+                createHiddenInput(`items[${index}][qty_sold_kg]`, item.qty.toFixed(3)),
+            );
         });
     };
 

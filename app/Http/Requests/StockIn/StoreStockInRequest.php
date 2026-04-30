@@ -29,9 +29,19 @@ class StoreStockInRequest extends FormRequest
                 Rule::exists('supplier', 'supplier_id')->where(fn ($query) => $query->where('status', 'Active')),
             ],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'integer', 'exists:product,product_id'],
+            'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:product,product_id'],
             'items.*.qty_in_kg' => ['required', 'numeric', 'min:0.001'],
             'items.*.cost_per_kg' => ['required', 'numeric', 'min:0.01'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'items.*.product_id.distinct' => 'Each stock-in product can only be added once per batch.',
         ];
     }
 

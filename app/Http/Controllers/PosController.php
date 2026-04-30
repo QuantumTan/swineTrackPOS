@@ -68,16 +68,12 @@ class PosController extends Controller
                 ->with('error', $stockError);
         }
 
-        $batch = Batch::query()
-            ->whereIn('batch_status', ['Open', 'Sold Out'])
-            ->latest('batch_date')
-            ->latest('batch_id')
-            ->first();
+        $batch = $this->findBatchForSale($items);
 
         if (! $batch) {
             return back()
                 ->withInput()
-                ->with('error', 'Please create a stock-in batch before completing POS sales.');
+                ->with('error', 'No active stock-in batch has enough remaining quantity for every cart item.');
         }
 
         try {
@@ -209,6 +205,26 @@ class PosController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     */
+    private function findBatchForSale($items): ?Batch
+    {
+        $query = Batch::query()
+            ->where('batch_status', '!=', 'Closed');
+
+        foreach ($items as $item) {
+            $query->whereHas('items', fn ($batchItems) => $batchItems
+                ->where('product_id', $item['product_id'])
+                ->where('qty_in_kg', '>=', $item['qty_sold_kg']));
+        }
+
+        return $query
+            ->latest('batch_date')
+            ->latest('batch_id')
+            ->first();
     }
 
     private function saleItemInsertDeductsInventory(): bool

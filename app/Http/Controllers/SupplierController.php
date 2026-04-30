@@ -64,6 +64,14 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier): RedirectResponse
     {
+        if ($supplier->batches()->exists()) {
+            return redirect()
+                ->route('suppliers.index')
+                ->withErrors([
+                    'supplier_delete' => 'This supplier cannot be deleted while it is still used by other records.',
+                ]);
+        }
+
         try {
             $supplier->delete();
         } catch (QueryException $exception) {
