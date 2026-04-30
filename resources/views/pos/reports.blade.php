@@ -1,11 +1,35 @@
 <x-app-layout pageTitle="Reports">
     @include('pos.partials.page-header', [
-        'title' => 'Reports',
-        'subtitle' => 'Static report view for sales, stock, and receiving activity.',
+        'title' => $reportMeta['title'],
+        'subtitle' => 'Review sales performance summaries, product movement, and category trends.',
         'actions' => new \Illuminate\Support\HtmlString(
-            '<div class="d-flex flex-wrap gap-2"><button class="btn btn-success px-4" type="button"><i class="bi bi-download me-2"></i>Export Summary</button><button class="btn btn-light border px-4" type="button"><i class="bi bi-printer me-2"></i>Print Preview</button></div>'
+            '<a class="btn btn-light border px-4" href="'.route('reports.sales-activity').'"><i class="bi bi-receipt me-2"></i>Sales Activity</a>'
         ),
     ])
+
+    <section class="content-card report-filter-card mb-4">
+        <form method="GET" action="{{ route('reports.index') }}" class="report-filter-form">
+            <div>
+                <h3 class="section-title mb-3">Report Filters</h3>
+                <label class="form-label fw-semibold" for="report-type">Report Type</label>
+                <select id="report-type" name="type" class="form-select report-type-select">
+                    @foreach ($reportTypes as $value => $label)
+                        <option value="{{ $value }}" @selected($reportMeta['type'] === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <div class="section-subtitle mt-2">Period: {{ $reportMeta['period'] }}</div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-success px-4">
+                    <i class="bi bi-play-fill me-2"></i>Generate Report
+                </button>
+                <button type="button" class="btn btn-light border px-4" onclick="window.print()">
+                    <i class="bi bi-printer me-2"></i>Print
+                </button>
+            </div>
+        </form>
+    </section>
 
     <div class="row g-4 mb-4">
         @foreach ($summaryCards as $card)
@@ -15,263 +39,122 @@
                     'value' => $card['value'],
                     'meta' => $card['trend'],
                     'icon' => $card['icon'],
+                    'tone' => $card['tone'] ?? 'green',
                 ])
             </div>
         @endforeach
     </div>
 
-    <section class="content-card mb-4">
-        <div class="row g-4 p-4">
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Sales Trend</h3>
-                            <p class="section-subtitle mb-0">Daily sales totals and transaction counts.</p>
+    <section class="content-card report-analytics-section mb-4">
+        <div class="card-header-clean">
+            <h3 class="section-title mb-0">Sales Trend</h3>
+        </div>
+
+        <div class="report-chart-body">
+            <div class="bar-graph report-sales-trend">
+                @forelse ($salesTrend as $bar)
+                    <div class="bar-column">
+                        <div class="bar-track report-trend-track">
+                            <div class="bar-fill graph-fill-revenue" style="--value: {{ $bar['height'] }};"></div>
                         </div>
+                        <div class="bar-label">{{ $bar['label'] }}</div>
+                        <div class="bar-value report-revenue-text">{{ $bar['total_sales'] }}</div>
+                        <div class="bar-meta">{{ $bar['transactions'] }} transaction(s)</div>
                     </div>
-
-                    <div class="bar-graph">
-                        @foreach ($salesGraph as $bar)
-                            <div class="bar-column">
-                                <div class="bar-track">
-                                    <div class="bar-fill graph-fill-primary" style="--value: {{ $bar['height'] }};"></div>
-                                </div>
-                                <div class="bar-value">{{ $bar['total_sales'] }}</div>
-                                <div class="bar-label">{{ $bar['label'] }}</div>
-                                <div class="bar-meta">{{ $bar['transactions'] }} transactions</div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Low Stock Levels</h3>
-                            <p class="section-subtitle mb-0">Current low-stock quantities used for the reorder watchlist.</p>
-                        </div>
-                    </div>
-
-                    <div class="progress-list">
-                        @foreach ($lowStockGraph as $item)
-                            <div class="progress-row">
-                                <div class="progress-copy">
-                                    <div class="fw-semibold">{{ $item['label'] }}</div>
-                                    <div class="text-secondary small">{{ $item['value'] }}</div>
-                                </div>
-                                <div class="progress-track">
-                                    <div class="progress-fill progress-fill-{{ $item['type'] }}" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Inventory Quantities</h3>
-                            <p class="section-subtitle mb-0">Stock quantity comparison across the sample inventory rows.</p>
-                        </div>
-                    </div>
-
-                    <div class="progress-list">
-                        @foreach ($inventoryGraph as $item)
-                            <div class="progress-row">
-                                <div class="progress-copy">
-                                    <div class="fw-semibold">{{ $item['label'] }}</div>
-                                    <div class="text-secondary small">{{ $item['value'] }}</div>
-                                </div>
-                                <div class="progress-track">
-                                    <div class="progress-fill progress-fill-{{ $item['type'] }}" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Cost and Sales Comparison</h3>
-                            <p class="section-subtitle mb-0">Batch intake cost and sold-line value comparisons.</p>
-                        </div>
-                    </div>
-
-                    <div class="progress-list mb-4">
-                        @foreach ($batchCostGraph as $item)
-                            <div class="progress-row">
-                                <div class="progress-copy">
-                                    <div class="fw-semibold">Batch: {{ $item['label'] }}</div>
-                                    <div class="text-secondary small">{{ $item['value'] }}</div>
-                                </div>
-                                <div class="progress-track">
-                                    <div class="progress-fill progress-fill-{{ $item['type'] }}" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <div class="progress-list">
-                        @foreach ($salesMixGraph as $item)
-                            <div class="progress-row">
-                                <div class="progress-copy">
-                                    <div class="fw-semibold">Sales: {{ $item['label'] }}</div>
-                                    <div class="text-secondary small">{{ $item['value'] }}</div>
-                                </div>
-                                <div class="progress-track">
-                                    <div class="progress-fill progress-fill-{{ $item['type'] }}" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
+                @empty
+                    <div class="report-empty">No sales trend data for this period.</div>
+                @endforelse
             </div>
         </div>
     </section>
 
     <div class="row g-4 mb-4">
-        <div class="col-12 col-xl-5">
+        <div class="col-12 col-xl-6">
             <section class="content-card h-100">
-                @include('pos.partials.section-card-header', [
-                    'title' => 'Low Stock Watchlist',
-                    'subtitle' => 'Products currently below the safe stock level.',
-                ])
+                <div class="card-header-clean">
+                    <h3 class="section-title mb-0">Top Selling Products</h3>
+                </div>
 
-                <div class="p-4 pt-3 d-grid gap-3">
-                    @foreach ($lowStockProducts as $product)
-                        <div class="alert-item">
-                            <div class="d-flex justify-content-between align-items-start gap-3">
-                                <div>
-                                    <div class="fw-semibold">{{ $product['product_name'] }}</div>
-                                    <div class="text-secondary small">{{ $product['product_id'] }} | {{ $product['current_stock'] }}</div>
+                <div class="report-chart-body">
+                    <div class="top-products-chart">
+                        @forelse ($topProductsGraph as $item)
+                            <div class="top-product-row">
+                                <div class="top-product-label">{{ $item['label'] }}</div>
+                                <div class="top-product-track">
+                                    <div class="top-product-fill" style="--value: {{ $item['width'] }};"></div>
                                 </div>
-                                @include('pos.partials.status-pill', [
-                                    'label' => $product['status']['label'],
-                                    'type' => $product['status']['class'],
-                                ])
+                                <div class="top-product-value">{{ $item['value'] }}</div>
+                            </div>
+                        @empty
+                            <div class="report-empty">No product sales for this period.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <section class="content-card h-100">
+                <div class="card-header-clean">
+                    <h3 class="section-title mb-0">Sales by Category</h3>
+                </div>
+
+                <div class="report-chart-body">
+                    <div class="donut-chart-wrap">
+                        <div class="donut-chart" style="--segments: {{ $categorySalesDonut['gradient'] }};">
+                            <div class="donut-center">
+                                <div class="donut-value">{{ count($categorySalesDonut['segments']) }}</div>
+                                <div class="donut-label">Categories</div>
                             </div>
                         </div>
-                    @endforeach
-                </div>
-            </section>
-        </div>
-
-        <div class="col-12 col-xl-7">
-            <section class="content-card h-100">
-                @include('pos.partials.section-card-header', [
-                    'title' => 'Daily Sales Breakdown',
-                    'subtitle' => 'Sample rows for sale day, total transactions, and total sales.',
-                ])
-
-                <div class="table-responsive">
-                    <table class="table app-table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Sale Day</th>
-                                <th>Total Transactions</th>
-                                <th>Total Sales</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($dailySalesSummary as $row)
-                                <tr>
-                                    <td class="fw-semibold">{{ $row['sale_day'] }}</td>
-                                    <td>{{ $row['total_transactions'] }}</td>
-                                    <td class="fw-semibold">{{ $row['total_sales'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                        <div class="donut-legend">
+                            @forelse ($categorySalesDonut['segments'] as $segment)
+                                <div class="donut-legend-row">
+                                    <span class="donut-dot" style="--dot-color: {{ $segment['color'] }};"></span>
+                                    <span class="fw-semibold">{{ $segment['category_name'] }}</span>
+                                    <span class="text-secondary small">{{ $segment['revenue'] }} | {{ $segment['percent'] }}%</span>
+                                </div>
+                            @empty
+                                <div class="report-empty">No category sales for this period.</div>
+                            @endforelse
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-12 col-xl-6">
-            <section class="content-card h-100">
-                @include('pos.partials.section-card-header', [
-                    'title' => 'Sales Activity',
-                    'subtitle' => 'Recent sold items and line totals.',
-                ])
-
-                <div class="table-responsive">
-                    <table class="table app-table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Sale ID</th>
-                                <th>Date</th>
-                                <th>Batch</th>
-                                <th>User</th>
-                                <th>Product</th>
-                                <th>Qty Sold</th>
-                                <th>Line Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($salesDetails as $row)
-                                <tr>
-                                    <td class="text-secondary">{{ $row['sale_id'] }}</td>
-                                    <td>{{ $row['sale_date'] }}</td>
-                                    <td>{{ $row['batch_id'] }}</td>
-                                    <td>{{ $row['user_email'] }}</td>
-                                    <td class="fw-semibold">{{ $row['product_name'] }}</td>
-                                    <td>{{ $row['qty_sold_kg'] }}</td>
-                                    <td class="fw-semibold">{{ $row['line_total'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+    <section class="content-card mb-4">
+        <div class="card-header-clean">
+            <h3 class="section-title mb-0">Product Sales Summary</h3>
+            <div class="section-subtitle mt-2">Aggregated by product for the selected report period.</div>
         </div>
 
-        <div class="col-12 col-xl-6">
-            <section class="content-card h-100">
-                @include('pos.partials.section-card-header', [
-                    'title' => 'Batch Cost Review',
-                    'subtitle' => 'Rows for recent receiving cost activity.',
-                ])
-
-                <div class="table-responsive">
-                    <table class="table app-table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Batch ID</th>
-                                <th>Source Type</th>
-                                <th>Product</th>
-                                <th>Qty In</th>
-                                <th>Cost / kg</th>
-                                <th>Line Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($batchDetails as $row)
-                                <tr>
-                                    <td class="text-secondary">{{ $row['batch_id'] }}</td>
-                                    <td>{{ $row['source_type'] }}</td>
-                                    <td class="fw-semibold">{{ $row['product_name'] }}</td>
-                                    <td>{{ $row['qty_in_kg'] }}</td>
-                                    <td>{{ $row['cost_per_kg'] }}</td>
-                                    <td class="fw-semibold">{{ $row['line_total_cost'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+        <div class="table-responsive">
+            <table class="table app-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Qty Sold (kg)</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($productSalesSummary as $row)
+                        <tr>
+                            <td class="fw-semibold">{{ $row['product_name'] }}</td>
+                            <td>{{ $row['category_name'] }}</td>
+                            <td>{{ $row['qty_sold_kg'] }}</td>
+                            <td class="fw-semibold report-revenue-text">{{ $row['revenue'] }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td class="text-center text-secondary py-4" colspan="4">No product sales for this period.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-    </div>
+    </section>
 </x-app-layout>

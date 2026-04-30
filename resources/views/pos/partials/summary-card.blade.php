@@ -1,4 +1,4 @@
-<div class="summary-card h-100 {{ $class ?? '' }}">
+<div class="summary-card summary-card-{{ $tone ?? 'green' }} h-100 {{ $class ?? '' }}">
     <div class="summary-card-top">
         <div class="summary-copy">
             <div class="summary-label">{{ $label }}</div>

@@ -4,6 +4,9 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SalesActivityReportController;
 use App\Http\Controllers\StockInController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
@@ -18,12 +21,14 @@ Route::get('/', function () {
 Route::middleware('auth')->group(function () {
 
     Route::controller(PosController::class)->group(function () {
-        Route::get('/dashboard', 'dashboard')->name('dashboard');
         Route::get('/sales', 'sales')->name('sales.index');
         Route::post('/sales', 'storeSale')->name('sales.store');
         Route::get('/inventory', 'inventory')->name('inventory.index');
-        Route::get('/reports', 'reports')->name('reports.index');
     });
+
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/sales-activity', [SalesActivityReportController::class, 'index'])->name('reports.sales-activity');
 
     Route::controller(ProductController::class)->prefix('products')->name('products.')->group(function () {
         Route::get('/', 'index')->name('index');
