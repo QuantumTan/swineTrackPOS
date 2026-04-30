@@ -41,6 +41,7 @@ class StockInController extends Controller
             'products' => Product::query()->orderBy('product_name')->get(),
             'activeSuppliers' => $activeSuppliers,
             'selectableSuppliers' => $selectableSuppliers,
+            'canCreateStockIn' => ! $this->hasOpenStockInWithRemainingQuantity(),
         ]);
     }
 
@@ -117,5 +118,13 @@ class StockInController extends Controller
                 'value' => $primarySource,
             ],
         ];
+    }
+
+    private function hasOpenStockInWithRemainingQuantity(): bool
+    {
+        return Batch::query()
+            ->where('batch_status', '!=', 'Closed')
+            ->whereHas('items', fn ($query) => $query->where('qty_in_kg', '>', 0))
+            ->exists();
     }
 }

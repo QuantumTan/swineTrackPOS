@@ -1,9 +1,16 @@
 <x-app-layout pageTitle="Stock-In">
+    @php
+        $stockInActions = $canCreateStockIn
+            ? new \Illuminate\Support\HtmlString(
+                '<button class="btn btn-success px-4" type="button" data-bs-toggle="collapse" data-bs-target="#stockInCreatePanel" aria-expanded="false" aria-controls="stockInCreatePanel"><i class="bi bi-plus-lg me-2"></i>New Stock-In</button>')
+            : new \Illuminate\Support\HtmlString(
+                '<button class="btn btn-success px-4" type="button" disabled aria-disabled="true" title="Close or sell out the current batch before creating a new stock-in"><i class="bi bi-plus-lg me-2"></i>New Stock-In</button>');
+    @endphp
+
     @include('pos.partials.page-header', [
         'title' => 'Stock-In',
         'subtitle' => 'Record incoming inventory',
-        'actions' => new \Illuminate\Support\HtmlString(
-            '<button class="btn btn-success px-4" type="button" data-bs-toggle="collapse" data-bs-target="#stockInCreatePanel" aria-expanded="false" aria-controls="stockInCreatePanel"><i class="bi bi-plus-lg me-2"></i>New Stock-In</button>'),
+        'actions' => $stockInActions,
     ])
 
     @if (session('status'))
@@ -16,6 +23,12 @@
 
     @if ($errors->has('stock_in_create'))
         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_create') }}</div>
+    @endif
+
+    @if (! $canCreateStockIn)
+        <div class="alert alert-warning rounded-4 border-0 shadow-sm mb-4">
+            A live batch still has remaining quantity. Finish it first before creating another stock-in.
+        </div>
     @endif
 
     @php
