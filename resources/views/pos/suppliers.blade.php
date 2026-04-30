@@ -67,13 +67,13 @@
                     <div class="col-12 col-xl-4">
                         <label class="form-label fw-semibold">Status</label>
                         <select
-                            name="supplier_status"
-                            class="form-select @error('supplier_status') is-invalid @enderror"
+                            name="status"
+                            class="form-select @error('status') is-invalid @enderror"
                         >
-                            <option value="Active" @selected(old('supplier_status', 'Active') === 'Active')>Active</option>
-                            <option value="Inactive" @selected(old('supplier_status') === 'Inactive')>Inactive</option>
+                            <option value="Active" @selected(old('status', 'Active') === 'Active')>Active</option>
+                            <option value="Inactive" @selected(old('status') === 'Inactive')>Inactive</option>
                         </select>
-                        @error('supplier_status')
+                        @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -81,12 +81,12 @@
                         <label class="form-label fw-semibold">Contact First Name</label>
                         <input
                             type="text"
-                            name="supplier_contact_first_name"
-                            class="form-control @error('supplier_contact_first_name') is-invalid @enderror"
-                            value="{{ old('supplier_contact_first_name') }}"
+                            name="contact_person_first_name"
+                            class="form-control @error('contact_person_first_name') is-invalid @enderror"
+                            value="{{ old('contact_person_first_name') }}"
                             placeholder="Ana"
                         >
-                        @error('supplier_contact_first_name')
+                        @error('contact_person_first_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -94,12 +94,12 @@
                         <label class="form-label fw-semibold">Contact Last Name</label>
                         <input
                             type="text"
-                            name="supplier_contact_last_name"
-                            class="form-control @error('supplier_contact_last_name') is-invalid @enderror"
-                            value="{{ old('supplier_contact_last_name') }}"
+                            name="contact_person_last_name"
+                            class="form-control @error('contact_person_last_name') is-invalid @enderror"
+                            value="{{ old('contact_person_last_name') }}"
                             placeholder="Ramos"
                         >
-                        @error('supplier_contact_last_name')
+                        @error('contact_person_last_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -107,12 +107,12 @@
                         <label class="form-label fw-semibold">Contact Number</label>
                         <input
                             type="text"
-                            name="supplier_phone_number"
-                            class="form-control @error('supplier_phone_number') is-invalid @enderror"
-                            value="{{ old('supplier_phone_number') }}"
+                            name="contact_number"
+                            class="form-control @error('contact_number') is-invalid @enderror"
+                            value="{{ old('contact_number') }}"
                             placeholder="09xx xxx xxxx"
                         >
-                        @error('supplier_phone_number')
+                        @error('contact_number')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -120,12 +120,12 @@
                         <label class="form-label fw-semibold">Email Address</label>
                         <input
                             type="email"
-                            name="supplier_email"
-                            class="form-control @error('supplier_email') is-invalid @enderror"
-                            value="{{ old('supplier_email') }}"
+                            name="email_address"
+                            class="form-control @error('email_address') is-invalid @enderror"
+                            value="{{ old('email_address') }}"
                             placeholder="buyer@supplier.com"
                         >
-                        @error('supplier_email')
+                        @error('email_address')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -133,12 +133,12 @@
                         <label class="form-label fw-semibold">Business Address</label>
                         <input
                             type="text"
-                            name="supplier_address"
-                            class="form-control @error('supplier_address') is-invalid @enderror"
-                            value="{{ old('supplier_address') }}"
+                            name="business_address"
+                            class="form-control @error('business_address') is-invalid @enderror"
+                            value="{{ old('business_address') }}"
                             placeholder="Barangay, city, province"
                         >
-                        @error('supplier_address')
+                        @error('business_address')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -183,16 +183,16 @@
                             </td>
                             <td>{{ $supplier->contact_full_name ?: '-' }}</td>
                             <td>
-                                @if ($supplier->supplier_phone_number)
-                                    <a class="supplier-table-link" href="tel:{{ preg_replace('/\s+/', '', $supplier->supplier_phone_number) }}">{{ $supplier->supplier_phone_number }}</a>
+                                @if ($supplier->contact_number)
+                                    <a class="supplier-table-link" href="tel:{{ preg_replace('/\s+/', '', $supplier->contact_number) }}">{{ $supplier->contact_number }}</a>
                                 @else
                                     <span class="supplier-cell-muted">-</span>
                                 @endif
                             </td>
-                            <td class="supplier-cell-secondary">{{ $supplier->supplier_email ?: '-' }}</td>
+                            <td class="supplier-cell-secondary">{{ $supplier->email_address ?: '-' }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
-                                    'label' => $supplier->supplier_status,
+                                    'label' => $supplier->status,
                                     'type' => $supplier->status_type,
                                 ])
                             </td>
@@ -236,7 +236,7 @@
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                         <h4 class="supplier-name">{{ $supplier->supplier_name }}</h4>
                         @include('pos.partials.status-pill', [
-                            'label' => $supplier->supplier_status,
+                            'label' => $supplier->status,
                             'type' => $supplier->status_type,
                         ])
                     </div>
@@ -254,19 +254,19 @@
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Contact First Name</div>
-                    <div class="fw-semibold">{{ $supplier->supplier_contact_first_name ?: '-' }}</div>
+                    <div class="fw-semibold">{{ $supplier->contact_person_first_name ?: '-' }}</div>
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Contact Last Name</div>
-                    <div class="fw-semibold">{{ $supplier->supplier_contact_last_name ?: '-' }}</div>
+                    <div class="fw-semibold">{{ $supplier->contact_person_last_name ?: '-' }}</div>
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Contact Number</div>
-                    <div class="fw-semibold">{{ $supplier->supplier_phone_number ?: '-' }}</div>
+                    <div class="fw-semibold">{{ $supplier->contact_number ?: '-' }}</div>
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Email Address</div>
-                    <div class="fw-semibold">{{ $supplier->supplier_email ?: '-' }}</div>
+                    <div class="fw-semibold">{{ $supplier->email_address ?: '-' }}</div>
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Delivery Count</div>
@@ -278,7 +278,7 @@
                 </div>
                 <div class="supplier-detail-card">
                     <div class="modal-detail-label">Business Address</div>
-                    <div class="fw-semibold">{{ $supplier->supplier_address ?: '-' }}</div>
+                    <div class="fw-semibold">{{ $supplier->business_address ?: '-' }}</div>
                 </div>
             </div>
 
@@ -300,30 +300,30 @@
                     </div>
                     <div class="col-12 col-xl-4">
                         <label class="form-label fw-semibold">Status</label>
-                        <select name="supplier_status" class="form-select">
-                            <option value="Active" @selected($supplier->supplier_status === 'Active')>Active</option>
-                            <option value="Inactive" @selected($supplier->supplier_status === 'Inactive')>Inactive</option>
+                        <select name="status" class="form-select">
+                            <option value="Active" @selected($supplier->status === 'Active')>Active</option>
+                            <option value="Inactive" @selected($supplier->status === 'Inactive')>Inactive</option>
                         </select>
                     </div>
                     <div class="col-12 col-lg-4">
                         <label class="form-label fw-semibold">Contact First Name</label>
-                        <input type="text" name="supplier_contact_first_name" class="form-control" value="{{ $supplier->supplier_contact_first_name }}">
+                        <input type="text" name="contact_person_first_name" class="form-control" value="{{ $supplier->contact_person_first_name }}">
                     </div>
                     <div class="col-12 col-lg-4">
                         <label class="form-label fw-semibold">Contact Last Name</label>
-                        <input type="text" name="supplier_contact_last_name" class="form-control" value="{{ $supplier->supplier_contact_last_name }}">
+                        <input type="text" name="contact_person_last_name" class="form-control" value="{{ $supplier->contact_person_last_name }}">
                     </div>
                     <div class="col-12 col-lg-4">
                         <label class="form-label fw-semibold">Contact Number</label>
-                        <input type="text" name="supplier_phone_number" class="form-control" value="{{ $supplier->supplier_phone_number }}">
+                        <input type="text" name="contact_number" class="form-control" value="{{ $supplier->contact_number }}">
                     </div>
                     <div class="col-12 col-lg-4">
                         <label class="form-label fw-semibold">Email Address</label>
-                        <input type="email" name="supplier_email" class="form-control" value="{{ $supplier->supplier_email }}">
+                        <input type="email" name="email_address" class="form-control" value="{{ $supplier->email_address }}">
                     </div>
                     <div class="col-12 col-lg-8">
                         <label class="form-label fw-semibold">Business Address</label>
-                        <input type="text" name="supplier_address" class="form-control" value="{{ $supplier->supplier_address }}">
+                        <input type="text" name="business_address" class="form-control" value="{{ $supplier->business_address }}">
                     </div>
                 </div>
 

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::dropIfExists('products');
+        //
     }
 
     /**
@@ -19,9 +19,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::create('products', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+        //
     }
 };

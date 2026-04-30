@@ -17,6 +17,7 @@
             'label' => 'Management',
             'items' => [
                 ['label' => 'Products', 'route' => 'products.index', 'icon' => 'bi-box-seam'],
+                ['label' => 'Categories', 'route' => 'categories.index', 'icon' => 'bi-tags'],
                 ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'bi-truck'],
             ],
         ],
@@ -46,6 +47,7 @@
             <nav class="nav flex-column gap-1 mb-4">
                 @foreach ($group['items'] as $item)
                     <a href="{{ route($item['route']) }}"
+                       @if ($item['route'] === 'sales.index') data-pos-entry @endif
                        class="nav-link app-nav-link {{ request()->routeIs($item['route']) ? 'active' : '' }}">
                         <i class="bi {{ $item['icon'] }}"></i>
                         <span>{{ $item['label'] }}</span>

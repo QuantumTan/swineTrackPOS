@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\StockInController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::controller(PosController::class)->group(function () {
         Route::get('/dashboard', 'dashboard')->name('dashboard');
         Route::get('/sales', 'sales')->name('sales.index');
+        Route::post('/sales', 'storeSale')->name('sales.store');
         Route::get('/inventory', 'inventory')->name('inventory.index');
         Route::get('/reports', 'reports')->name('reports.index');
     });
@@ -28,6 +30,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/', 'store')->name('store');
         Route::put('/{product}', 'update')->name('update');
         Route::delete('/{product}', 'destroy')->name('destroy');
+    });
+
+    Route::controller(CategoryController::class)->prefix('categories')->name('categories.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{category}', 'update')->name('update');
+        Route::delete('/{category}', 'destroy')->name('destroy');
     });
 
     Route::controller(StockInController::class)->prefix('stock-ins')->name('stock-ins.')->group(function () {

@@ -19,12 +19,12 @@ class Supplier extends Model
 
     protected $fillable = [
         'supplier_name',
-        'supplier_contact_first_name',
-        'supplier_contact_last_name',
-        'supplier_phone_number',
-        'supplier_email',
-        'supplier_address',
-        'supplier_status',
+        'contact_person_first_name',
+        'contact_person_last_name',
+        'contact_number',
+        'status',
+        'email_address',
+        'business_address',
     ];
 
     protected function casts(): array
@@ -42,8 +42,8 @@ class Supplier extends Model
     public function getContactFullNameAttribute(): string
     {
         return trim(implode(' ', array_filter([
-            $this->supplier_contact_first_name,
-            $this->supplier_contact_last_name,
+            $this->contact_person_first_name,
+            $this->contact_person_last_name,
         ])));
     }
 
@@ -54,7 +54,7 @@ class Supplier extends Model
 
     public function getStatusTypeAttribute(): string
     {
-        return $this->supplier_status === 'Active' ? 'success' : 'neutral';
+        return $this->status === 'Active' ? 'success' : 'neutral';
     }
 
     public function getFormattedLastDeliveryAttribute(): ?string

@@ -38,6 +38,9 @@
                     @if (session('error'))
                         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ session('error') }}</div>
                     @endif
+                    @if (session('success'))
+                        <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">{{ session('success') }}</div>
+                    @endif
 
                     {{ $slot }}
                 </main>

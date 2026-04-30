@@ -25,7 +25,7 @@ class StockInController extends Controller
             ->withQueryString();
 
         $activeSuppliers = Supplier::query()
-            ->where('supplier_status', 'Active')
+            ->where('status', 'Active')
             ->orderBy('supplier_name')
             ->get();
 
@@ -91,9 +91,9 @@ class StockInController extends Controller
             ->where('batch_date', '>=', now()->startOfDay())
             ->count();
 
-        $weekCost = (float) DB::table('batches')
-            ->join('batch_item', 'batch_item.batch_id', '=', 'batches.batch_id')
-            ->where('batches.batch_date', '>=', now()->startOfWeek())
+        $weekCost = (float) DB::table('batch')
+            ->join('batch_item', 'batch_item.batch_id', '=', 'batch.batch_id')
+            ->where('batch.batch_date', '>=', now()->startOfWeek())
             ->selectRaw('SUM(batch_item.qty_in_kg * batch_item.cost_per_kg) as total_cost')
             ->value('total_cost');
 

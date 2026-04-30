@@ -155,7 +155,7 @@
                             <div class="d-flex justify-content-between align-items-start gap-3">
                                 <div>
                                     <div class="fw-semibold">{{ $product['product_name'] }}</div>
-                                    <div class="text-secondary small">{{ $product['product_id'] }} | {{ $product['current_stock_kg'] }}</div>
+                                    <div class="text-secondary small">{{ $product['product_id'] }} | {{ $product['current_stock'] }}</div>
                                 </div>
                                 @include('pos.partials.status-pill', [
                                     'label' => $product['status']['label'],

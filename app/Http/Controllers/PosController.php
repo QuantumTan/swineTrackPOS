@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Batch;
 use App\Models\BatchItem;
 use App\Models\Product;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class PosController extends Controller
@@ -153,95 +157,26 @@ class PosController extends Controller
 
     public function sales(): View
     {
+        $catalogItems = Product::query()
+            ->with('category')
+            ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
+            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
+            ->orderBy('product.product_name')
+            ->get();
+
         return view('pos.sales', [
             'terminalMeta' => [
-                'title' => 'SALES MODE — Active Transaction',
+                'title' => 'SALES MODE - Active Transaction',
                 'subtitle' => 'Point of Sale Terminal',
-                'time' => '10:43:37 PM',
-                'date' => 'Apr 15, 2026',
+                'time' => now()->format('h:i:s A'),
+                'date' => now()->format('M d, Y'),
             ],
-            'catalogItems' => [
-                [
-                    'product_name' => 'Pork Belly (Liempo)',
-                    'product_id' => 'P002',
-                    'category' => 'Premium Cuts',
-                    'price_per_kg' => 'P330.00',
-                    'stock' => '32.00 kg',
-                    'status' => ['label' => 'Ready', 'class' => 'success'],
-                ],
-                [
-                    'product_name' => 'Pork Chop',
-                    'product_id' => 'P001',
-                    'category' => 'Premium Cuts',
-                    'price_per_kg' => 'P280.00',
-                    'stock' => '45.00 kg',
-                    'status' => ['label' => 'Ready', 'class' => 'success'],
-                ],
-                [
-                    'product_name' => 'Ground Pork',
-                    'product_id' => 'P003',
-                    'category' => 'Ground Meat',
-                    'price_per_kg' => 'P240.00',
-                    'stock' => '28.00 kg',
-                    'status' => ['label' => 'Low Stock', 'class' => 'warning'],
-                ],
-                [
-                    'product_name' => 'Pork Ribs',
-                    'product_id' => 'P004',
-                    'category' => 'Premium Cuts',
-                    'price_per_kg' => 'P350.00',
-                    'stock' => '15.00 kg',
-                    'status' => ['label' => 'Ready', 'class' => 'success'],
-                ],
-                [
-                    'product_name' => 'Pork Shoulder (Kasim)',
-                    'product_id' => 'P005',
-                    'category' => 'Standard Cuts',
-                    'price_per_kg' => 'P260.00',
-                    'stock' => '5.00 kg',
-                    'status' => ['label' => 'Low Stock', 'class' => 'danger'],
-                ],
-                [
-                    'product_name' => 'Pork Loin',
-                    'product_id' => 'P006',
-                    'category' => 'Premium Cuts',
-                    'price_per_kg' => 'P300.00',
-                    'stock' => '22.00 kg',
-                    'status' => ['label' => 'Ready', 'class' => 'success'],
-                ],
-            ],
-            'cartItems' => [
-                [
-                    'product_name' => 'Pork Belly (Liempo)',
-                    'price_per_kg' => 'P320.00/kg',
-                    'qty_display' => '0.5',
-                    'line_total' => 'P160.00',
-                ],
-                [
-                    'product_name' => 'Pork Chop',
-                    'price_per_kg' => 'P280.00/kg',
-                    'qty_display' => '0.5',
-                    'line_total' => 'P140.00',
-                ],
-                [
-                    'product_name' => 'Ground Pork',
-                    'price_per_kg' => 'P240.00/kg',
-                    'qty_display' => '0.5',
-                    'line_total' => 'P120.00',
-                ],
-            ],
-            'payment' => [
-                'customer' => 'Walk-In Customer',
-                'subtotal' => 'P420.00',
-                'total' => 'P420.00',
-                'cash_received' => '1000',
-                'change' => 'P580.00',
-            ],
+            'catalogItems' => $catalogItems,
             'cashShortcuts' => [
-                'P100',
-                'P200',
-                'P500',
-                'P1000',
+                100,
+                200,
+                500,
+                1000,
             ],
             'numberKeys' => [
                 '7', '8', '9',
@@ -250,6 +185,242 @@ class PosController extends Controller
                 '00', '0', 'CLR',
             ],
         ]);
+    }
+
+    public function storeSale(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'exists:product,product_id'],
+            'items.*.qty_sold_kg' => ['required', 'numeric', 'gt:0'],
+            'cash_received' => ['required', 'numeric', 'gte:0'],
+        ]);
+
+        $items = collect($validated['items'])
+            ->groupBy('product_id')
+            ->map(fn ($group, $productId): array => [
+                'product_id' => (int) $productId,
+                'qty_sold_kg' => (float) $group->sum('qty_sold_kg'),
+            ])
+            ->values();
+
+        if ($stockError = $this->firstInsufficientStockError($items)) {
+            return back()
+                ->withInput()
+                ->withErrors(['items' => $stockError])
+                ->with('error', $stockError);
+        }
+
+        $batch = Batch::query()
+            ->whereIn('batch_status', ['Open', 'Sold Out'])
+            ->latest('batch_date')
+            ->latest('batch_id')
+            ->first();
+
+        if (! $batch) {
+            return back()
+                ->withInput()
+                ->with('error', 'Please create a stock-in batch before completing POS sales.');
+        }
+
+        try {
+            $saleId = DB::transaction(function () use ($items, $batch, $request, $validated): int {
+                $products = Product::query()
+                    ->whereIn('product.product_id', $items->pluck('product_id'))
+                    ->get()
+                    ->keyBy('product_id');
+
+                $inventory = DB::table('inventory')
+                    ->whereIn('product_id', $items->pluck('product_id'))
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('product_id');
+
+                $saleItemInsertDeductsInventory = $this->saleItemInsertDeductsInventory();
+                $subtotal = 0;
+
+                foreach ($items as $item) {
+                    $product = $products->get($item['product_id']);
+                    $stock = (float) ($inventory->get($item['product_id'])?->current_stock ?? 0);
+
+                    if (! $product || $stock < $item['qty_sold_kg']) {
+                        throw new \RuntimeException('Insufficient stock for one or more cart items.');
+                    }
+
+                    $subtotal += $item['qty_sold_kg'] * (float) $product->product_price_per_kilo;
+                }
+
+                if ((float) $validated['cash_received'] < $subtotal) {
+                    throw new \RuntimeException('Cash received is lower than the total amount.');
+                }
+
+                if (! $this->saleItemInsertDeductsBatchItems()) {
+                    foreach ($items as $item) {
+                        $updated = DB::table('batch_item')
+                            ->where('batch_id', $batch->batch_id)
+                            ->where('product_id', $item['product_id'])
+                            ->where('qty_in_kg', '>=', $item['qty_sold_kg'])
+                            ->update([
+                                'qty_in_kg' => DB::raw('qty_in_kg - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
+                            ]);
+
+                        if ($updated !== 1) {
+                            throw new \RuntimeException('Insufficient batch stock for one or more cart items.');
+                        }
+                    }
+                }
+
+                $saleId = DB::table('sale')->insertGetId([
+                    'batch_id' => $batch->batch_id,
+                    'user_id' => $request->user()->user_id,
+                    'sale_date' => now(),
+                ], 'sale_id');
+
+                foreach ($items as $item) {
+                    $product = $products->get($item['product_id']);
+
+                    if (! $saleItemInsertDeductsInventory) {
+                        $updated = DB::table('inventory')
+                            ->where('product_id', $item['product_id'])
+                            ->where('current_stock', '>=', $item['qty_sold_kg'])
+                            ->update([
+                                'current_stock' => DB::raw('current_stock - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
+                                'last_updated_at' => now(),
+                            ]);
+
+                        if ($updated !== 1) {
+                            throw new \RuntimeException('Insufficient stock for one or more cart items.');
+                        }
+                    }
+
+                    DB::table('sale_item')->insert([
+                        'sale_id' => $saleId,
+                        'product_id' => $item['product_id'],
+                        'qty_sold_kg' => $item['qty_sold_kg'],
+                        'price_per_kg' => $product->product_price_per_kilo,
+                    ]);
+                }
+
+                DB::table('payment')->insert([
+                    'sale_id' => $saleId,
+                    'amount' => $subtotal,
+                    'payment_status' => 'paid',
+                    'payment_date' => now(),
+                ]);
+
+                return $saleId;
+            });
+        } catch (\Throwable $exception) {
+            return back()
+                ->withInput()
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()
+            ->route('sales.index')
+            ->with('success', 'Sale #'.$saleId.' completed successfully.')
+            ->with('receipt', $this->buildReceipt($saleId, (float) $validated['cash_received']));
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     */
+    private function firstInsufficientStockError($items): ?string
+    {
+        $products = Product::query()
+            ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
+            ->whereIn('product.product_id', $items->pluck('product_id'))
+            ->select('product.product_id', 'product.product_name', 'inventory.current_stock')
+            ->get()
+            ->keyBy('product_id');
+
+        foreach ($items as $item) {
+            $product = $products->get($item['product_id']);
+            $availableStock = (float) ($product?->current_stock ?? 0);
+            $requestedQty = (float) $item['qty_sold_kg'];
+
+            if ($requestedQty > $availableStock) {
+                $productName = $product?->product_name ?? 'Selected product';
+
+                return sprintf(
+                    '%s only has %s kg available. Requested quantity was %s kg.',
+                    $productName,
+                    number_format($availableStock, 3),
+                    number_format($requestedQty, 3)
+                );
+            }
+        }
+
+        return null;
+    }
+
+    private function saleItemInsertDeductsInventory(): bool
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return false;
+        }
+
+        return DB::table('information_schema.TRIGGERS')
+            ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
+            ->where('TRIGGER_NAME', 'trg_sale_item_after_insert')
+            ->exists();
+    }
+
+    private function saleItemInsertDeductsBatchItems(): bool
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return false;
+        }
+
+        return DB::table('information_schema.TRIGGERS')
+            ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
+            ->where('TRIGGER_NAME', 'trg_sale_item_after_insert')
+            ->where('ACTION_STATEMENT', 'like', '%batch_item%')
+            ->exists();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildReceipt(int $saleId, float $cashReceived): array
+    {
+        $sale = DB::table('sale')
+            ->join('user', 'user.user_id', '=', 'sale.user_id')
+            ->where('sale.sale_id', $saleId)
+            ->select('sale.sale_id', 'sale.sale_date', 'sale.batch_id', 'user.user_email')
+            ->first();
+
+        $items = DB::table('sale_item')
+            ->join('product', 'product.product_id', '=', 'sale_item.product_id')
+            ->where('sale_item.sale_id', $saleId)
+            ->select(
+                'product.product_name',
+                'sale_item.qty_sold_kg',
+                'sale_item.price_per_kg',
+                DB::raw('(sale_item.qty_sold_kg * sale_item.price_per_kg) as line_total')
+            )
+            ->orderBy('sale_item.sale_item_id')
+            ->get();
+
+        $total = (float) DB::table('payment')
+            ->where('sale_id', $saleId)
+            ->value('amount');
+
+        return [
+            'sale_id' => $saleId,
+            'sale_date' => optional($sale?->sale_date ? \Carbon\Carbon::parse($sale->sale_date) : null)->format('M d, Y h:i A'),
+            'batch_id' => $sale?->batch_id,
+            'cashier' => $sale?->user_email,
+            'items' => $items->map(fn (object $item): array => [
+                'product_name' => $item->product_name,
+                'qty_sold_kg' => number_format((float) $item->qty_sold_kg, 3),
+                'price_per_kg' => 'P'.number_format((float) $item->price_per_kg, 2),
+                'line_total' => 'P'.number_format((float) $item->line_total, 2),
+            ])->all(),
+            'total' => 'P'.number_format($total, 2),
+            'cash_received' => 'P'.number_format($cashReceived, 2),
+            'change' => 'P'.number_format(max($cashReceived - $total, 0), 2),
+        ];
     }
 
     public function stockIns(): View
@@ -285,22 +456,23 @@ class PosController extends Controller
     public function inventory(): View
     {
         $latestSupplierSubquery = BatchItem::query()
-            ->join('batches', 'batches.batch_id', '=', 'batch_item.batch_id')
-            ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batches.supplier_id')
+            ->join('batch', 'batch.batch_id', '=', 'batch_item.batch_id')
+            ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batch.supplier_id')
             ->whereColumn('batch_item.product_id', 'product.product_id')
-            ->orderByDesc('batches.batch_date')
-            ->orderByDesc('batches.batch_id')
+            ->orderByDesc('batch.batch_date')
+            ->orderByDesc('batch.batch_id')
             ->selectRaw("
                 CASE
-                    WHEN batches.source_type = 'Own Livestock' THEN 'Own Livestock'
+                    WHEN batch.source_type = 'Own Livestock' THEN 'Own Livestock'
                     ELSE COALESCE(supplier.supplier_name, 'N/A')
                 END
             ")
             ->limit(1);
 
         $inventoryRows = Product::query()
+            ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock_kg', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
             ->selectSub($latestSupplierSubquery, 'latest_supplier')
             ->orderBy('product.product_id')
             ->paginate(10)
@@ -308,7 +480,7 @@ class PosController extends Controller
 
         $allInventoryRows = Product::query()
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.product_id', 'inventory.current_stock_kg')
+            ->select('product.product_id', 'inventory.current_stock')
             ->get();
 
         return view('pos.inventory', [
@@ -320,12 +492,12 @@ class PosController extends Controller
                 ],
                 [
                     'label' => 'In Stock',
-                    'value' => $allInventoryRows->filter(fn ($row) => (float) ($row->current_stock_kg ?? 0) > 0)->count(),
+                    'value' => $allInventoryRows->filter(fn ($row) => (float) ($row->current_stock ?? 0) > 0)->count(),
                 ],
                 [
                     'label' => 'Low Stock / Out',
                     'value' => $allInventoryRows->filter(
-                        fn ($row) => (float) ($row->current_stock_kg ?? 0) < Product::LOW_STOCK_THRESHOLD
+                        fn ($row) => (float) ($row->current_stock ?? 0) < Product::LOW_STOCK_THRESHOLD
                     )->count(),
                 ],
             ],
@@ -512,7 +684,7 @@ class PosController extends Controller
                 'kind' => 'View',
                 'name' => 'vw_product_inventory',
                 'description' => 'Inventory display for products, stock, price per kilo, update time, and computed stock status.',
-                'detail' => 'product_id, product_name, product_category, product_price_per_kilo, current_stock_kg, last_updated_at, stock_status',
+                'detail' => 'product_id, product_name, category_name, product_price_per_kilo, current_stock, last_updated_at, stock_status',
             ],
             [
                 'kind' => 'View',
@@ -536,13 +708,13 @@ class PosController extends Controller
                 'kind' => 'View',
                 'name' => 'vw_low_stock_products',
                 'description' => 'Products at or below the low-stock threshold for watchlists and reorder prompts.',
-                'detail' => 'product_id, product_name, current_stock_kg',
+                'detail' => 'product_id, product_name, current_stock',
             ],
             [
                 'kind' => 'Trigger',
                 'name' => 'trg_product_after_insert',
                 'description' => 'Creates the starting inventory row the moment a product is inserted.',
-                'detail' => 'AFTER INSERT ON product -> inventory(product_id, current_stock_kg = 0, last_updated_at = NOW())',
+                'detail' => 'AFTER INSERT ON product -> inventory(product_id, current_stock = 0, last_updated_at = NOW())',
             ],
         ];
     }
@@ -585,25 +757,25 @@ class PosController extends Controller
             [
                 'product_id' => 'P003',
                 'product_name' => 'Ground Pork',
-                'current_stock_kg' => '8.500 kg',
+                'current_stock' => '8.500 kg',
                 'status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
             [
                 'product_id' => 'P004',
                 'product_name' => 'Pork Ribs',
-                'current_stock_kg' => '4.250 kg',
+                'current_stock' => '4.250 kg',
                 'status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
             [
                 'product_id' => 'P005',
                 'product_name' => 'Pork Shoulder (Kasim)',
-                'current_stock_kg' => '0.000 kg',
+                'current_stock' => '0.000 kg',
                 'status' => ['label' => 'Out of Stock', 'class' => 'danger'],
             ],
             [
                 'product_id' => 'P006',
                 'product_name' => 'Pork Loin',
-                'current_stock_kg' => '9.750 kg',
+                'current_stock' => '9.750 kg',
                 'status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
         ];
@@ -618,36 +790,36 @@ class PosController extends Controller
             [
                 'product_id' => 'P001',
                 'product_name' => 'Pork Chop',
-                'product_category' => 'Premium Cuts',
+                'category_name' => 'Premium Cuts',
                 'product_price_per_kilo' => 'P315.00',
-                'current_stock_kg' => '28.000 kg',
+                'current_stock' => '28.000 kg',
                 'last_updated_at' => '20 Apr 2026, 06:30 AM',
                 'stock_status' => ['label' => 'In Stock', 'class' => 'success'],
             ],
             [
                 'product_id' => 'P002',
                 'product_name' => 'Pork Belly (Liempo)',
-                'product_category' => 'Premium Cuts',
+                'category_name' => 'Premium Cuts',
                 'product_price_per_kilo' => 'P330.00',
-                'current_stock_kg' => '16.500 kg',
+                'current_stock' => '16.500 kg',
                 'last_updated_at' => '20 Apr 2026, 06:15 AM',
                 'stock_status' => ['label' => 'In Stock', 'class' => 'success'],
             ],
             [
                 'product_id' => 'P003',
                 'product_name' => 'Ground Pork',
-                'product_category' => 'Ground Meat',
+                'category_name' => 'Ground Meat',
                 'product_price_per_kilo' => 'P255.00',
-                'current_stock_kg' => '8.500 kg',
+                'current_stock' => '8.500 kg',
                 'last_updated_at' => '20 Apr 2026, 05:55 AM',
                 'stock_status' => ['label' => 'Low Stock', 'class' => 'warning'],
             ],
             [
                 'product_id' => 'P005',
                 'product_name' => 'Pork Shoulder (Kasim)',
-                'product_category' => 'Standard Cuts',
+                'category_name' => 'Standard Cuts',
                 'product_price_per_kilo' => 'P285.00',
-                'current_stock_kg' => '0.000 kg',
+                'current_stock' => '0.000 kg',
                 'last_updated_at' => '20 Apr 2026, 05:40 AM',
                 'stock_status' => ['label' => 'Out of Stock', 'class' => 'danger'],
             ],
