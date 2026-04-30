@@ -78,7 +78,7 @@
         $productHeaderAside = new \Illuminate\Support\HtmlString(
             '<div class="section-header-pills">'
             . '<div class="toolbar-chip"><i class="bi bi-grid me-2"></i>'.$products->total().' total products</div>'
-            . '<div class="toolbar-chip"><i class="bi bi-box-seam me-2"></i>Stock quantity and status stay visible in the table</div>'
+            . '<div class="toolbar-chip"><i class="bi bi-box-seam me-2"></i>Catalog table view</div>'
             . '</div>'
         );
     @endphp
