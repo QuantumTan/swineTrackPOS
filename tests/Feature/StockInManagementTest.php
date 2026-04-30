@@ -150,7 +150,8 @@ test('stock-in page disables the new stock-in button while a live batch still ha
     $response->assertOk();
     $response->assertSee('New Stock-In', false);
     $response->assertSee('disabled aria-disabled="true"', false);
-    $response->assertSee('A live batch still has remaining quantity. Finish it first before creating another stock-in.', false);
+    $response->assertSee('Batch #'.$openBatch->batch_id.' still has remaining quantity', false);
+    $response->assertSee('Please finish selling out or mark it as Closed before creating another stock-in.', false);
     $response->assertDontSee('data-bs-toggle="collapse" data-bs-target="#stockInCreatePanel"', false);
 });
 
@@ -602,5 +603,49 @@ test('cannot create stock-in with an inactive supplier', function () {
         ->assertSessionHasErrors('supplier_id');
 
     expect(Batch::query()->count())->toBe(0);
+});
+
+test('stock-in button re-enables when all batch items are sold to zero quantity', function () {
+    $user = User::factory()->create();
+    $supplier = Supplier::create([
+        'supplier_name' => 'Fresh Meat Supply',
+        'supplier_phone_number' => '09181234567',
+    ]);
+    $product = makeStockInProduct('Pork Belly', 280.00);
+
+    // Create a batch with some stock
+    $batch = Batch::create([
+        'supplier_id' => $supplier->supplier_id,
+        'user_id' => $user->user_id,
+        'batch_date' => now()->subDay(),
+        'source_type' => 'Supplier',
+        'batch_status' => 'Open',
+    ]);
+
+    $batchItem = BatchItem::create([
+        'batch_id' => $batch->batch_id,
+        'product_id' => $product->product_id,
+        'qty_in_kg' => 5.0,
+        'cost_per_kg' => 200.00,
+    ]);
+
+    // Verify button is initially disabled
+    $response = $this
+        ->actingAs($user)
+        ->get(route('stock-ins.index'));
+
+    $response->assertSee('disabled aria-disabled="true"', false);
+    $response->assertSee('Batch #'.$batch->batch_id.' still has remaining quantity', false);
+
+    // Simulate selling all the stock by setting qty_in_kg to 0
+    $batchItem->update(['qty_in_kg' => 0]);
+
+    // Verify button is now enabled
+    $response = $this
+        ->actingAs($user)
+        ->get(route('stock-ins.index'));
+
+    $response->assertDontSee('disabled aria-disabled="true"', false);
+    $response->assertDontSee('Batch #'.$batch->batch_id, false);
 });
 

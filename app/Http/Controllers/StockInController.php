@@ -73,7 +73,8 @@ class StockInController extends Controller
             'products' => Product::query()->orderBy('product_name')->get(),
             'activeSuppliers' => $activeSuppliers,
             'selectableSuppliers' => $selectableSuppliers,
-            'canCreateStockIn' => ! $this->hasOpenStockInWithRemainingQuantity(),
+            'blockingBatch' => $this->getBlockingBatch(),
+            'canCreateStockIn' => $this->getBlockingBatch() === null,
         ]);
     }
 
@@ -152,11 +153,14 @@ class StockInController extends Controller
         ];
     }
 
-    private function hasOpenStockInWithRemainingQuantity(): bool
+    private function getBlockingBatch(): ?Batch
     {
+        // Find the latest batch that is not Closed and still has qty_in_kg > 0
         return Batch::query()
             ->where('batch_status', '!=', 'Closed')
-            ->whereHas('items', fn ($query) => $query->where('qty_in_kg', '>', 0))
-            ->exists();
+            ->whereRaw('batch.batch_id IN (SELECT DISTINCT batch_id FROM batch_item WHERE qty_in_kg > 0)')
+            ->orderByDesc('batch_date')
+            ->orderByDesc('batch_id')
+            ->first();
     }
 }

@@ -1,5 +1,6 @@
 <x-app-layout pageTitle="Stock-In">
     @php
+        $canCreateStockIn = $canCreateStockIn ?? ($blockingBatch === null);
         $stockInActions = $canCreateStockIn
             ? new \Illuminate\Support\HtmlString(
                 '<button class="btn btn-success px-4" type="button" data-bs-toggle="collapse" data-bs-target="#stockInCreatePanel" aria-expanded="false" aria-controls="stockInCreatePanel"><i class="bi bi-plus-lg me-2"></i>New Stock-In</button>')
@@ -25,9 +26,10 @@
         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_create') }}</div>
     @endif
 
-    @if (! $canCreateStockIn)
+    @if (! $canCreateStockIn && $blockingBatch)
         <div class="alert alert-warning rounded-4 border-0 shadow-sm mb-4">
-            A live batch still has remaining quantity. Finish it first before creating another stock-in.
+            <strong>Active Batch:</strong> Batch #{{ $blockingBatch->batch_id }} still has remaining quantity. 
+            Please finish selling out or mark it as Closed before creating another stock-in.
         </div>
     @endif
 
@@ -55,7 +57,7 @@
         @endforeach
     </div>
 
-    <div class="collapse mb-4 {{ $errors->any() ? 'show' : '' }}" id="stockInCreatePanel">
+    <div class="collapse mb-4 {{ $canCreateStockIn && $errors->any() ? 'show' : '' }}" id="stockInCreatePanel">
         @component('pos.partials.panel-card', [
             'title' => 'Record Stock-In',
             'subtitle' => 'Capture delivery details and itemized incoming stock.',

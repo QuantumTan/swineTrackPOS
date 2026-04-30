@@ -33,9 +33,11 @@ class StockInService
 
     private function ensureNoOpenBatchExists(): void
     {
+        // Check if there's any batch that is NOT Closed AND has items with remaining quantity
+        // Use a raw subquery to ensure the check is precise
         $openBatchExists = Batch::query()
             ->where('batch_status', '!=', BatchStatus::Closed->value)
-            ->whereHas('items', fn ($query) => $query->where('qty_in_kg', '>', 0))
+            ->whereRaw('batch.batch_id IN (SELECT DISTINCT batch_id FROM batch_item WHERE qty_in_kg > 0)')
             ->exists();
 
         if ($openBatchExists) {
