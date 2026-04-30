@@ -56,19 +56,6 @@ END
 SQL);
 
         DB::unprepared(<<<'SQL'
-CREATE TRIGGER trg_batch_item_after_insert
-AFTER INSERT ON batch_item
-FOR EACH ROW
-BEGIN
-    INSERT INTO inventory (product_id, current_stock, last_updated_at)
-    VALUES (NEW.product_id, NEW.qty_in_kg, NOW())
-    ON DUPLICATE KEY UPDATE
-        current_stock = current_stock + NEW.qty_in_kg,
-        last_updated_at = NOW();
-END
-SQL);
-
-        DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_sale_item_before_insert
 BEFORE INSERT ON sale_item
 FOR EACH ROW

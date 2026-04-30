@@ -10,15 +10,46 @@ use App\Models\Supplier;
 use App\Services\StockInService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class StockInController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filters = [
+            'search' => trim((string) $request->query('search', '')),
+            'source_type' => (string) $request->query('source_type', ''),
+            'batch_status' => (string) $request->query('batch_status', ''),
+        ];
+
         $batches = Batch::query()
             ->with(['supplier', 'items.product'])
+            ->when($filters['search'] !== '', function ($query) use ($filters) {
+                $query->where(function ($searchQuery) use ($filters) {
+                    $searchQuery
+                        ->where('batch_id', (int) $filters['search'])
+                        ->orWhereHas('supplier', fn ($supplierQuery) => $supplierQuery
+                            ->where('supplier_name', 'like', '%'.$filters['search'].'%'));
+                });
+            })
+            ->when($filters['source_type'] !== '', fn ($query) => $query->where('source_type', $filters['source_type']))
+            ->when($filters['batch_status'] !== '', function ($query) use ($filters) {
+                if ($filters['batch_status'] === 'closed') {
+                    $query->where('batch_status', 'Closed');
+                } elseif ($filters['batch_status'] === 'sold_out') {
+                    $query->where('batch_status', '!=', 'Closed')
+                        ->whereHas('items')
+                        ->whereDoesntHave('items', fn ($itemQuery) => $itemQuery->where('qty_in_kg', '>', 0));
+                } elseif ($filters['batch_status'] === 'open') {
+                    $query->where('batch_status', '!=', 'Closed')
+                        ->where(function ($openQuery) {
+                            $openQuery->whereDoesntHave('items')
+                                ->orWhereHas('items', fn ($itemQuery) => $itemQuery->where('qty_in_kg', '>', 0));
+                        });
+                }
+            })
             ->orderByDesc('batch_date')
             ->orderByDesc('batch_id')
             ->paginate(10)
@@ -37,6 +68,7 @@ class StockInController extends Controller
 
         return view('pos.stock-ins', [
             'stockIns' => $batches,
+            'filters' => $filters,
             'summary' => $this->summary(),
             'products' => Product::query()->orderBy('product_name')->get(),
             'activeSuppliers' => $activeSuppliers,

@@ -90,6 +90,41 @@
             'aside' => $productHeaderAside,
         ])
 
+        <form method="GET" action="{{ route('products.index') }}" class="row g-3 m-2">
+            <div class="col-12 col-md-5">
+                <label class="form-label fw-semibold">Search</label>
+                <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    value="{{ $filters['search'] }}"
+                    placeholder="Product name or ID"
+                >
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label fw-semibold">Category</label>
+                <select name="category_id" class="form-select">
+                    <option value="">All categories</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->category_id }}" @selected((string) $filters['category_id'] === (string) $category->category_id)>{{ $category->category_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label fw-semibold">Stock</label>
+                <select name="stock_status" class="form-select">
+                    <option value="">All stock levels</option>
+                    <option value="in_stock" @selected($filters['stock_status'] === 'in_stock')>In Stock</option>
+                    <option value="low_stock" @selected($filters['stock_status'] === 'low_stock')>Low Stock</option>
+                    <option value="out_of_stock" @selected($filters['stock_status'] === 'out_of_stock')>Out of Stock</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-success w-100">Apply</button>
+                <a href="{{ route('products.index') }}" class="btn btn-light border w-100">Clear</a>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
                 <thead>
