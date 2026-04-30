@@ -200,12 +200,14 @@ SQL);
 
     private function dropMySqlRoutines(): void
     {
-        foreach ([
-            'trg_sale_item_after_insert',
-            'trg_sale_item_before_insert',
-            'trg_batch_item_after_insert',
-            'trg_product_after_insert',
-        ] as $trigger) {
+        foreach (
+            [
+                'trg_sale_item_after_insert',
+                'trg_sale_item_before_insert',
+                'trg_batch_item_after_insert',
+                'trg_product_after_insert',
+            ] as $trigger
+        ) {
             DB::unprepared("DROP TRIGGER IF EXISTS {$trigger}");
         }
 

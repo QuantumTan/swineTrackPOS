@@ -1,7 +1,10 @@
 <x-app-layout pageTitle="Dashboard">
     @include('pos.partials.page-header', [
         'title' => 'Dashboard',
-        'subtitle' => 'Static dashboard for sales, stock, and receiving activity.',
+        'subtitle' => 'Operational overview for sales, stock, and receiving activity.',
+        'actions' => new \Illuminate\Support\HtmlString(
+            '<div class="d-flex flex-wrap gap-2"><a class="btn btn-success px-4" href="'.route('sales.index').'"><i class="bi bi-cart3 me-2"></i>New Sale</a><a class="btn btn-light border px-4" href="'.route('reports.index').'"><i class="bi bi-file-earmark-text me-2"></i>View Reports</a></div>'
+        ),
     ])
 
     <div class="row g-4 mb-4">
@@ -12,186 +15,173 @@
                     'value' => $card['value'],
                     'meta' => $card['trend'],
                     'icon' => $card['icon'],
+                    'tone' => $card['tone'] ?? 'green',
                 ])
             </div>
         @endforeach
     </div>
 
-    <section class="content-card mb-4">
-        <div class="row g-4 p-4">
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Sales Trend</h3>
-                            <p class="section-subtitle mb-0">Daily totals and transactions shown as a static sales trend.</p>
-                        </div>
-                    </div>
-
-                    <div class="bar-graph">
-                        @foreach ($salesGraph as $bar)
-                            <div class="bar-column">
-                                <div class="bar-track">
-                                    <div class="bar-fill graph-fill-primary" style="--value: {{ $bar['height'] }};"></div>
-                                </div>
-                                <div class="bar-value">{{ $bar['total_sales'] }}</div>
-                                <div class="bar-label">{{ $bar['label'] }}</div>
-                                <div class="bar-meta">{{ $bar['transactions'] }} transactions</div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Low Stock Levels</h3>
-                            <p class="section-subtitle mb-0">Products at or below the low-stock threshold.</p>
-                        </div>
-                    </div>
-
-                    <div class="progress-list">
-                        @foreach ($lowStockGraph as $item)
-                            <div class="progress-row">
-                                <div class="progress-copy">
-                                    <div class="fw-semibold">{{ $item['label'] }}</div>
-                                    <div class="text-secondary small">{{ $item['value'] }}</div>
-                                </div>
-                                <div class="progress-track">
-                                    <div class="progress-fill progress-fill-{{ $item['type'] }}" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Stock Status Mix</h3>
-                            <p class="section-subtitle mb-0">Status mix from the sample inventory snapshot.</p>
-                        </div>
-                    </div>
-
-                    <div class="progress-list">
-                        @foreach ($inventoryStatusGraph as $item)
-                            <div class="progress-row">
-                                <div class="progress-copy">
-                                    <div class="fw-semibold">{{ $item['label'] }}</div>
-                                    <div class="text-secondary small">{{ $item['count'] }} sample row(s)</div>
-                                </div>
-                                <div class="progress-track">
-                                    <div class="progress-fill progress-fill-{{ $item['type'] }}" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-xl-6">
-                <div class="graph-card h-100">
-                    <div class="graph-header">
-                        <div>
-                            <div class="graph-eyebrow">Graph</div>
-                            <h3 class="section-title mb-1">Batch Cost Comparison</h3>
-                            <p class="section-subtitle mb-0">Line total cost comparison from the sample batch intake rows.</p>
-                        </div>
-                    </div>
-
-                    <div class="progress-list">
-                        @foreach ($batchCostGraph as $item)
-                            <div class="progress-row">
-                                <div class="progress-copy">
-                                    <div class="fw-semibold">{{ $item['label'] }}</div>
-                                    <div class="text-secondary small">{{ $item['value'] }}</div>
-                                </div>
-                                <div class="progress-track">
-                                    <div class="progress-fill progress-fill-{{ $item['type'] }}" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <div class="row g-4">
-        <div class="col-12 col-xl-5">
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-4">
             <section class="content-card h-100">
                 @include('pos.partials.section-card-header', [
-                    'title' => 'Stock Snapshot',
-                    'subtitle' => 'Sample rows from the inventory snapshot.',
+                    'title' => 'Action Center',
+                    'subtitle' => 'Fast paths for daily store work.',
+                ])
+
+                <div class="dashboard-action-list p-4 pt-3">
+                    <a class="dashboard-action" href="{{ route('sales.index') }}">
+                        <span><i class="bi bi-cart3"></i></span>
+                        <div>
+                            <div class="fw-semibold">Open POS Terminal</div>
+                            <div class="text-secondary small">Start a walk-in sale.</div>
+                        </div>
+                    </a>
+                    <a class="dashboard-action" href="{{ route('stock-ins.index') }}">
+                        <span><i class="bi bi-arrow-down-circle"></i></span>
+                        <div>
+                            <div class="fw-semibold">Record Stock-In</div>
+                            <div class="text-secondary small">Add receiving quantities.</div>
+                        </div>
+                    </a>
+                    <a class="dashboard-action" href="{{ route('inventory.index') }}">
+                        <span><i class="bi bi-archive"></i></span>
+                        <div>
+                            <div class="fw-semibold">Review Inventory</div>
+                            <div class="text-secondary small">Check live stock levels.</div>
+                        </div>
+                    </a>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <section class="content-card h-100">
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Stock Alerts',
+                    'subtitle' => 'Products that need attention soon.',
+                ])
+
+                <div class="p-4 pt-3 d-grid gap-3">
+                    @forelse ($lowStockProducts as $product)
+                        <div class="alert-item">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <div class="fw-semibold">{{ $product['product_name'] }}</div>
+                                    <div class="text-secondary small">{{ $product['product_id'] }} | {{ $product['current_stock'] }}</div>
+                                </div>
+                                @include('pos.partials.status-pill', [
+                                    'label' => $product['status']['label'],
+                                    'type' => $product['status']['class'],
+                                ])
+                            </div>
+                        </div>
+                    @empty
+                        <div class="report-empty">No low-stock products.</div>
+                    @endforelse
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <section class="content-card h-100">
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Inventory Health',
+                    'subtitle' => 'Current stock status across products.',
+                ])
+
+                <div class="p-4 pt-3">
+                    <div class="donut-chart-wrap dashboard-donut-wrap">
+                        <div class="donut-chart" style="--segments: {{ $inventoryStatusMix['gradient'] }};">
+                            <div class="donut-center">
+                                <div class="donut-value">{{ collect($inventoryStatusMix['segments'])->sum('count') }}</div>
+                                <div class="donut-label">Products</div>
+                            </div>
+                        </div>
+                        <div class="donut-legend">
+                            @forelse ($inventoryStatusMix['segments'] as $segment)
+                                <div class="donut-legend-row">
+                                    <span class="donut-dot" style="--dot-color: {{ $segment['color'] }};"></span>
+                                    <span class="fw-semibold">{{ $segment['label'] }}</span>
+                                    <span class="text-secondary small">{{ $segment['count'] }}</span>
+                                </div>
+                            @empty
+                                <div class="report-empty">No inventory rows yet.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <section class="content-card h-100">
+                @include('pos.partials.section-card-header', [
+                    'title' => 'Recent Sales',
+                    'subtitle' => 'Latest completed sales transactions.',
                 ])
 
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>Product ID</th>
-                                <th>Product Name</th>
-                                <th>Stock</th>
-                                <th>Status</th>
+                                <th>Sale ID</th>
+                                <th>Date & Time</th>
+                                <th>Items</th>
+                                <th>Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($inventorySnapshot as $item)
+                            @forelse ($recentTransactions as $row)
                                 <tr>
-                                    <td class="text-secondary">{{ $item['product_id'] }}</td>
-                                    <td class="fw-semibold">{{ $item['product_name'] }}</td>
-                                    <td>{{ $item['current_stock'] }}</td>
-                                    <td>
-                                        @include('pos.partials.status-pill', [
-                                            'label' => $item['stock_status']['label'],
-                                            'type' => $item['stock_status']['class'],
-                                        ])
-                                    </td>
+                                    <td class="text-secondary">{{ $row['sale_id'] }}</td>
+                                    <td>{{ $row['sale_date'] }}</td>
+                                    <td>{{ $row['item_count'] }} item(s)</td>
+                                    <td class="fw-semibold">{{ $row['amount'] }}</td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td class="text-center text-secondary py-4" colspan="4">No recent sales available.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
             </section>
         </div>
 
-        <div class="col-12 col-xl-7">
+        <div class="col-12 col-xl-6">
             <section class="content-card h-100">
                 @include('pos.partials.section-card-header', [
-                    'title' => 'Receiving Cost Review',
-                    'subtitle' => 'Sample intake lines for recent receiving activity.',
+                    'title' => 'Receiving Review',
+                    'subtitle' => 'Recent stock-in receiving activity.',
                 ])
 
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>Batch ID</th>
-                                <th>Source</th>
+                                <th>Batch</th>
                                 <th>Product</th>
                                 <th>Qty In</th>
-                                <th>Cost / kg</th>
-                                <th>Line Total</th>
+                                <th>Line Cost</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($batchDetails as $row)
+                            @forelse ($batchDetails as $row)
                                 <tr>
                                     <td class="text-secondary">{{ $row['batch_id'] }}</td>
-                                    <td>{{ $row['source_type'] }}</td>
                                     <td class="fw-semibold">{{ $row['product_name'] }}</td>
                                     <td>{{ $row['qty_in_kg'] }}</td>
-                                    <td>{{ $row['cost_per_kg'] }}</td>
                                     <td class="fw-semibold">{{ $row['line_total_cost'] }}</td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td class="text-center text-secondary py-4" colspan="4">No receiving rows available.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
