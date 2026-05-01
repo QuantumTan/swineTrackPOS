@@ -69,7 +69,7 @@ test('pos sale uses a batch with enough remaining quantity', function () {
     ]);
 
     $product->inventory()->update([
-        'current_stock' => 10.000,
+        'current_stock_kg' => 10.000,
         'last_updated_at' => now(),
     ]);
 
@@ -125,7 +125,7 @@ test('pos sale uses a batch with enough remaining quantity', function () {
 
     expect((float) $availableBatch->items()->first()->qty_in_kg)->toBe(8.0)
         ->and((float) $soldOutBatch->items()->first()->qty_in_kg)->toBe(0.0)
-        ->and((float) $product->inventory()->first()->current_stock)->toBe(8.0);
+        ->and((float) $product->inventory()->first()->current_stock_kg)->toBe(8.0);
 });
 
 test('supplier with stock-in history is not deleted', function () {

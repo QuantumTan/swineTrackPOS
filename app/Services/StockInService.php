@@ -215,10 +215,10 @@ class StockInService
     private function applyInventoryDelta(int $productId, float $delta): void
     {
         $inventory = Inventory::firstOrNew(['product_id' => $productId]);
-        $currentStock = (float) ($inventory->current_stock ?? 0);
+        $currentStock = (float) ($inventory->current_stock_kg ?? 0);
 
         $inventory->product_id = $productId;
-        $inventory->current_stock = max(0, round($currentStock + $delta, 3));
+        $inventory->current_stock_kg = max(0, round($currentStock + $delta, 3));
         $inventory->last_updated_at = now();
         $inventory->save();
     }
@@ -233,7 +233,7 @@ class StockInService
             ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
             ->whereIn('TRIGGER_NAME', [
                 'trg_batch_item_after_insert',
-                'trg_batch_item_after_update',
+                'after_batch_item_update_sync_inventory',
                 'trg_batch_item_after_delete',
             ])
             ->count();

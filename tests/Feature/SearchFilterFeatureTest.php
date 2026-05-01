@@ -101,8 +101,8 @@ test('inventory page supports stock level filter', function () {
         'product_price_per_kilo' => 300,
     ]);
 
-    $lowStockProduct->inventory()->update(['current_stock' => 5.000]);
-    $inStockProduct->inventory()->update(['current_stock' => Product::LOW_STOCK_THRESHOLD + 1]);
+    $lowStockProduct->inventory()->update(['current_stock_kg' => 5.000]);
+    $inStockProduct->inventory()->update(['current_stock_kg' => Product::LOW_STOCK_THRESHOLD + 1]);
 
     $response = $this
         ->actingAs($user)

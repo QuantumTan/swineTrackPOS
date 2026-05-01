@@ -29,7 +29,7 @@ class ProductController extends Controller
         $products = Product::query()
             ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock_kg as current_stock', 'inventory.last_updated_at')
             ->when($filters['search'] !== '', function ($query) use ($filters) {
                 $query->where(function ($searchQuery) use ($filters) {
                     $searchQuery
@@ -40,14 +40,14 @@ class ProductController extends Controller
             ->when($filters['category_id'] !== '', fn ($query) => $query->where('product.category_id', $filters['category_id']))
             ->when($filters['stock_status'] !== '', function ($query) use ($filters) {
                 if ($filters['stock_status'] === 'in_stock') {
-                    $query->where('inventory.current_stock', '>=', Product::LOW_STOCK_THRESHOLD);
+                    $query->where('inventory.current_stock_kg', '>=', Product::LOW_STOCK_THRESHOLD);
                 } elseif ($filters['stock_status'] === 'low_stock') {
-                    $query->where('inventory.current_stock', '>', 0)
-                        ->where('inventory.current_stock', '<', Product::LOW_STOCK_THRESHOLD);
+                    $query->where('inventory.current_stock_kg', '>', 0)
+                        ->where('inventory.current_stock_kg', '<', Product::LOW_STOCK_THRESHOLD);
                 } elseif ($filters['stock_status'] === 'out_of_stock') {
                     $query->where(function ($stockQuery) {
-                        $stockQuery->whereNull('inventory.current_stock')
-                            ->orWhere('inventory.current_stock', '<=', 0);
+                        $stockQuery->whereNull('inventory.current_stock_kg')
+                            ->orWhere('inventory.current_stock_kg', '<=', 0);
                     });
                 }
             })

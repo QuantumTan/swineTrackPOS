@@ -54,7 +54,7 @@ class ReportDemoDataSeeder extends Seeder
             DB::table('inventory')->updateOrInsert(
                 ['product_id' => $productId],
                 [
-                    'current_stock' => $product['stock'],
+                    'current_stock_kg' => $product['stock'],
                     'last_updated_at' => '2026-04-30 08:00:00',
                 ]
             );

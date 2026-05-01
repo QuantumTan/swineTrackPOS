@@ -21,7 +21,7 @@ test('pos sale cannot exceed current stock', function () {
     ]);
 
     $product->inventory()->update([
-        'current_stock' => 20.000,
+        'current_stock_kg' => 20.000,
         'last_updated_at' => now(),
     ]);
 
@@ -62,7 +62,7 @@ test('pos sale cannot exceed current stock', function () {
     $this->assertDatabaseCount('sale_item', 0);
     $this->assertDatabaseCount('payment', 0);
 
-    expect((float) $product->inventory()->first()->current_stock)->toBe(20.0);
+    expect((float) $product->inventory()->first()->current_stock_kg)->toBe(20.0);
     expect((float) $batch->items()->first()->qty_in_kg)->toBe(20.0);
 });
 
@@ -81,7 +81,7 @@ test('pos sale deducts current stock when successful', function () {
     ]);
 
     $product->inventory()->update([
-        'current_stock' => 20.000,
+        'current_stock_kg' => 20.000,
         'last_updated_at' => now(),
     ]);
 
@@ -120,6 +120,6 @@ test('pos sale deducts current stock when successful', function () {
     $this->assertDatabaseCount('sale_item', 1);
     $this->assertDatabaseCount('payment', 1);
 
-    expect((float) $product->inventory()->first()->current_stock)->toBe(15.0);
+    expect((float) $product->inventory()->first()->current_stock_kg)->toBe(15.0);
     expect((float) $batch->items()->first()->qty_in_kg)->toBe(15.0);
 });
