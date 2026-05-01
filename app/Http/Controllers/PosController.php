@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BatchStatus;
 use App\Models\Batch;
 use App\Models\BatchItem;
 use App\Models\Category;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -18,7 +21,7 @@ class PosController extends Controller
         $catalogItems = Product::query()
             ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock_kg as current_stock', 'inventory.last_updated_at')
             ->orderBy('product.product_name')
             ->get();
 
@@ -95,7 +98,7 @@ class PosController extends Controller
 
                 foreach ($items as $item) {
                     $product = $products->get($item['product_id']);
-                    $stock = (float) ($inventory->get($item['product_id'])?->current_stock ?? 0);
+                    $stock = (float) ($inventory->get($item['product_id'])?->current_stock_kg ?? 0);
 
                     if (! $product || $stock < $item['qty_sold_kg']) {
                         throw new \RuntimeException('Insufficient stock for one or more cart items.');
@@ -122,6 +125,8 @@ class PosController extends Controller
                             throw new \RuntimeException('Insufficient batch stock for one or more cart items.');
                         }
                     }
+
+                    $this->syncBatchStatusFromItems($batch->batch_id);
                 }
 
                 $saleId = DB::table('sale')->insertGetId([
@@ -136,9 +141,9 @@ class PosController extends Controller
                     if (! $saleItemInsertDeductsInventory) {
                         $updated = DB::table('inventory')
                             ->where('product_id', $item['product_id'])
-                            ->where('current_stock', '>=', $item['qty_sold_kg'])
+                            ->where('current_stock_kg', '>=', $item['qty_sold_kg'])
                             ->update([
-                                'current_stock' => DB::raw('current_stock - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
+                                'current_stock_kg' => DB::raw('current_stock_kg - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
                                 'last_updated_at' => now(),
                             ]);
 
@@ -177,14 +182,14 @@ class PosController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     * @param  Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
      */
     private function firstInsufficientStockError($items): ?string
     {
         $products = Product::query()
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
             ->whereIn('product.product_id', $items->pluck('product_id'))
-            ->select('product.product_id', 'product.product_name', 'inventory.current_stock')
+            ->select('product.product_id', 'product.product_name', 'inventory.current_stock_kg as current_stock')
             ->get()
             ->keyBy('product_id');
 
@@ -209,7 +214,7 @@ class PosController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     * @param  Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
      */
     private function findBatchForSale($items): ?Batch
     {
@@ -253,6 +258,36 @@ class PosController extends Controller
             ->exists();
     }
 
+    private function syncBatchStatusFromItems(int $batchId): void
+    {
+        $batch = Batch::query()
+            ->whereKey($batchId)
+            ->first();
+
+        if (! $batch || $batch->batch_status === BatchStatus::Closed) {
+            return;
+        }
+
+        $hasItems = BatchItem::query()
+            ->where('batch_id', $batchId)
+            ->exists();
+
+        if (! $hasItems) {
+            return;
+        }
+
+        $hasRemainingQuantity = BatchItem::query()
+            ->where('batch_id', $batchId)
+            ->where('qty_in_kg', '>', 0)
+            ->exists();
+
+        $batch->forceFill([
+            'batch_status' => $hasRemainingQuantity
+                ? BatchStatus::Open->value
+                : BatchStatus::SoldOut->value,
+        ])->save();
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -282,7 +317,7 @@ class PosController extends Controller
 
         return [
             'sale_id' => $saleId,
-            'sale_date' => optional($sale?->sale_date ? \Carbon\Carbon::parse($sale->sale_date) : null)->format('M d, Y h:i A'),
+            'sale_date' => optional($sale?->sale_date ? Carbon::parse($sale->sale_date) : null)->format('M d, Y h:i A'),
             'batch_id' => $sale?->batch_id,
             'cashier' => $sale?->user_email,
             'items' => $items->map(fn (object $item): array => [
@@ -352,7 +387,7 @@ class PosController extends Controller
         $inventoryRows = Product::query()
             ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock_kg as current_stock', 'inventory.last_updated_at')
             ->selectSub($latestSupplierSubquery, 'latest_supplier')
             ->when($filters['search'] !== '', function ($query) use ($filters) {
                 $query->where(function ($searchQuery) use ($filters) {
@@ -373,14 +408,14 @@ class PosController extends Controller
             ->when($filters['category_id'] !== '', fn ($query) => $query->where('product.category_id', $filters['category_id']))
             ->when($filters['stock_status'] !== '', function ($query) use ($filters) {
                 if ($filters['stock_status'] === 'in_stock') {
-                    $query->where('inventory.current_stock', '>=', Product::LOW_STOCK_THRESHOLD);
+                    $query->where('inventory.current_stock_kg', '>=', Product::LOW_STOCK_THRESHOLD);
                 } elseif ($filters['stock_status'] === 'low_stock') {
-                    $query->where('inventory.current_stock', '>', 0)
-                        ->where('inventory.current_stock', '<', Product::LOW_STOCK_THRESHOLD);
+                    $query->where('inventory.current_stock_kg', '>', 0)
+                        ->where('inventory.current_stock_kg', '<', Product::LOW_STOCK_THRESHOLD);
                 } elseif ($filters['stock_status'] === 'out_of_stock') {
                     $query->where(function ($stockQuery) {
-                        $stockQuery->whereNull('inventory.current_stock')
-                            ->orWhere('inventory.current_stock', '<=', 0);
+                        $stockQuery->whereNull('inventory.current_stock_kg')
+                            ->orWhere('inventory.current_stock_kg', '<=', 0);
                     });
                 }
             })
@@ -390,7 +425,7 @@ class PosController extends Controller
 
         $allInventoryRows = Product::query()
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.product_id', 'inventory.current_stock')
+            ->select('product.product_id', 'inventory.current_stock_kg as current_stock')
             ->get();
 
         return view('pos.inventory', [

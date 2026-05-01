@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Requests\StockIn\StoreStockInRequest;
+use App\Http\Requests\StoreProductRequest;
 use App\Models\Batch;
+use App\Models\BatchItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -33,6 +36,42 @@ test('supplier stock-in validation requires a supplier id', function () {
 
     expect($validator->fails())->toBeTrue()
         ->and($validator->errors()->has('supplier_id'))->toBeTrue();
+});
+
+test('product validation requires exactly one category link', function () {
+    $request = StoreProductRequest::create('/products', 'POST', [
+        'product_name' => 'Pork Ham',
+        'product_price_per_kilo' => 300.00,
+    ]);
+
+    $validator = Validator::make($request->all(), $request->rules());
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('category_id'))->toBeTrue()
+        ->and($validator->errors()->has('product_category'))->toBeTrue();
+});
+
+test('batch model enforces supplier link only for supplier sourced batches', function () {
+    $user = User::factory()->create();
+    $supplier = Supplier::create([
+        'supplier_name' => 'Central Farm Supply',
+    ]);
+
+    expect(fn () => Batch::create([
+        'supplier_id' => null,
+        'user_id' => $user->user_id,
+        'batch_date' => now(),
+        'source_type' => 'Supplier',
+        'batch_status' => 'Open',
+    ]))->toThrow(InvalidArgumentException::class);
+
+    expect(fn () => Batch::create([
+        'supplier_id' => $supplier->supplier_id,
+        'user_id' => $user->user_id,
+        'batch_date' => now(),
+        'source_type' => 'Own Livestock',
+        'batch_status' => 'Open',
+    ]))->toThrow(InvalidArgumentException::class);
 });
 
 test('sales domain models expose the documented relationships', function () {
@@ -68,16 +107,37 @@ test('sales domain models expose the documented relationships', function () {
         'price_per_kg' => 320.00,
     ]);
 
+    $batchItem = BatchItem::create([
+        'batch_id' => $batch->batch_id,
+        'product_id' => $product->product_id,
+        'qty_in_kg' => 1.500,
+        'cost_per_kg' => 210.00,
+    ]);
+
+    $payment = Payment::create([
+        'sale_id' => $sale->sale_id,
+        'amount' => 480.00,
+        'payment_status' => 'paid',
+        'payment_date' => now(),
+    ]);
+
     expect($supplier->batches()->count())->toBe(1)
         ->and($user->batches()->count())->toBe(1)
         ->and($user->sales()->count())->toBe(1)
         ->and($batch->sales()->count())->toBe(1)
+        ->and($batch->items()->count())->toBe(1)
         ->and($sale->items()->count())->toBe(1)
+        ->and($sale->payment->is($payment))->toBeTrue()
+        ->and($product->inventory)->not->toBeNull()
+        ->and($product->batchItems()->count())->toBe(1)
         ->and($product->saleItems()->count())->toBe(1)
         ->and($sale->batch->is($batch))->toBeTrue()
         ->and($sale->user->is($user))->toBeTrue()
         ->and($saleItem->sale->is($sale))->toBeTrue()
-        ->and($saleItem->product->is($product))->toBeTrue();
+        ->and($saleItem->product->is($product))->toBeTrue()
+        ->and($batchItem->batch->is($batch))->toBeTrue()
+        ->and($batchItem->product->is($product))->toBeTrue()
+        ->and($payment->sale->is($sale))->toBeTrue();
 });
 
 test('schema only keeps the singular product table', function () {

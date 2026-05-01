@@ -23,6 +23,7 @@ class Product extends Model
 
     protected $fillable = [
         'category_id',
+        'product_category',
         'product_name',
         'product_price_per_kilo',
     ];
@@ -31,16 +32,22 @@ class Product extends Model
     {
         return [
             'product_price_per_kilo' => 'decimal:2',
-            'current_stock' => 'decimal:3',
+            'current_stock_kg' => 'decimal:3',
             'last_updated_at' => 'datetime',
         ];
     }
 
     protected static function booted(): void
     {
+        static::saving(function (Product $product): void {
+            if (blank($product->category_id)) {
+                throw new \InvalidArgumentException('A product must belong to exactly one category.');
+            }
+        });
+
         static::created(function (Product $product): void {
             $product->inventory()->firstOrCreate([], [
-                'current_stock' => 0,
+                'current_stock_kg' => 0,
                 'last_updated_at' => now(),
             ]);
         });
@@ -73,7 +80,29 @@ class Product extends Model
 
     public function getCurrentStockValueAttribute(): float
     {
-        return (float) ($this->current_stock ?? 0);
+        return (float) ($this->current_stock_kg ?? $this->current_stock ?? 0);
+    }
+
+    public function getProductCategoryAttribute(): ?string
+    {
+        return $this->category?->category_name;
+    }
+
+    public function setProductCategoryAttribute(?string $value): void
+    {
+        $categoryName = trim((string) $value);
+
+        if ($categoryName === '') {
+            if (! array_key_exists('category_id', $this->attributes)) {
+                $this->attributes['category_id'] = null;
+            }
+
+            return;
+        }
+
+        $this->attributes['category_id'] = Category::firstOrCreate([
+            'category_name' => $categoryName,
+        ])->category_id;
     }
 
     public function getFormattedPriceAttribute(): string

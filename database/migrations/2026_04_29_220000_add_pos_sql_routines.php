@@ -7,26 +7,29 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
+        $this->dropViews();
+
+        if (DB::getDriverName() === 'mysql') {
+            $this->dropMySqlObjects();
+            $this->installFunctions();
+            $this->installTriggers();
+            $this->installProcedures();
         }
 
-        $this->installMySqlRoutines();
+        $this->installViews();
     }
 
     public function down(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
+        $this->dropViews();
 
-        $this->dropMySqlRoutines();
+        if (DB::getDriverName() === 'mysql') {
+            $this->dropMySqlObjects();
+        }
     }
 
-    private function installMySqlRoutines(): void
+    private function installFunctions(): void
     {
-        $this->dropMySqlRoutines();
-
         DB::unprepared(<<<'SQL'
 CREATE FUNCTION fn_pos_line_total(p_qty DECIMAL(10,3), p_price DECIMAL(10,2))
 RETURNS DECIMAL(10,2)
@@ -44,13 +47,16 @@ RETURN CASE
     ELSE 'In Stock'
 END
 SQL);
+    }
 
+    private function installTriggers(): void
+    {
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_product_after_insert
 AFTER INSERT ON product
 FOR EACH ROW
 BEGIN
-    INSERT IGNORE INTO inventory (product_id, current_stock, last_updated_at)
+    INSERT IGNORE INTO inventory (product_id, current_stock_kg, last_updated_at)
     VALUES (NEW.product_id, 0, NOW());
 END
 SQL);
@@ -60,35 +66,134 @@ CREATE TRIGGER trg_batch_item_after_insert
 AFTER INSERT ON batch_item
 FOR EACH ROW
 BEGIN
-    INSERT INTO inventory (product_id, current_stock, last_updated_at)
-    VALUES (NEW.product_id, NEW.qty_in_kg, NOW())
+    INSERT INTO inventory (product_id, current_stock_kg, last_updated_at)
+    VALUES (
+        NEW.product_id,
+        (
+            SELECT COALESCE(SUM(qty_in_kg), 0)
+            FROM batch_item
+            WHERE product_id = NEW.product_id
+        ),
+        NOW()
+    )
     ON DUPLICATE KEY UPDATE
-        current_stock = current_stock + NEW.qty_in_kg,
+        current_stock_kg = (
+            SELECT COALESCE(SUM(qty_in_kg), 0)
+            FROM batch_item
+            WHERE product_id = NEW.product_id
+        ),
         last_updated_at = NOW();
+
+    IF EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = NEW.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = NEW.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = NEW.batch_id;
+        END IF;
+    END IF;
 END
 SQL);
 
         DB::unprepared(<<<'SQL'
-CREATE TRIGGER trg_batch_item_after_update
+CREATE TRIGGER after_batch_item_update_sync_inventory
 AFTER UPDATE ON batch_item
 FOR EACH ROW
 BEGIN
-    IF OLD.product_id = NEW.product_id THEN
+    UPDATE inventory
+    SET current_stock_kg = (
+            SELECT COALESCE(SUM(qty_in_kg), 0)
+            FROM batch_item
+            WHERE product_id = NEW.product_id
+        ),
+        last_updated_at = NOW()
+    WHERE product_id = NEW.product_id;
+
+    IF OLD.product_id <> NEW.product_id THEN
         UPDATE inventory
-        SET current_stock = GREATEST(current_stock + (NEW.qty_in_kg - OLD.qty_in_kg), 0),
-            last_updated_at = NOW()
-        WHERE product_id = NEW.product_id;
-    ELSE
-        UPDATE inventory
-        SET current_stock = GREATEST(current_stock - OLD.qty_in_kg, 0),
+        SET current_stock_kg = (
+                SELECT COALESCE(SUM(qty_in_kg), 0)
+                FROM batch_item
+                WHERE product_id = OLD.product_id
+            ),
             last_updated_at = NOW()
         WHERE product_id = OLD.product_id;
+    END IF;
+END
+SQL);
 
-        INSERT INTO inventory (product_id, current_stock, last_updated_at)
-        VALUES (NEW.product_id, NEW.qty_in_kg, NOW())
-        ON DUPLICATE KEY UPDATE
-            current_stock = current_stock + NEW.qty_in_kg,
-            last_updated_at = NOW();
+        DB::unprepared(<<<'SQL'
+CREATE TRIGGER after_batch_item_update_status
+AFTER UPDATE ON batch_item
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = NEW.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = NEW.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = NEW.batch_id;
+        END IF;
+    END IF;
+
+    IF OLD.batch_id <> NEW.batch_id AND EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = OLD.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = OLD.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = OLD.batch_id;
+        END IF;
     END IF;
 END
 SQL);
@@ -99,9 +204,39 @@ AFTER DELETE ON batch_item
 FOR EACH ROW
 BEGIN
     UPDATE inventory
-    SET current_stock = GREATEST(current_stock - OLD.qty_in_kg, 0),
+    SET current_stock_kg = (
+            SELECT COALESCE(SUM(qty_in_kg), 0)
+            FROM batch_item
+            WHERE product_id = OLD.product_id
+        ),
         last_updated_at = NOW()
     WHERE product_id = OLD.product_id;
+
+    IF EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = OLD.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = OLD.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = OLD.batch_id;
+        END IF;
+    END IF;
 END
 SQL);
 
@@ -118,7 +253,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Sale price must not be negative';
     END IF;
 
-    IF COALESCE((SELECT current_stock FROM inventory WHERE product_id = NEW.product_id), 0) < NEW.qty_sold_kg THEN
+    IF COALESCE((SELECT current_stock_kg FROM inventory WHERE product_id = NEW.product_id), 0) < NEW.qty_sold_kg THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient stock for POS sale';
     END IF;
 
@@ -140,11 +275,6 @@ CREATE TRIGGER trg_sale_item_after_insert
 AFTER INSERT ON sale_item
 FOR EACH ROW
 BEGIN
-    UPDATE inventory
-    SET current_stock = current_stock - NEW.qty_sold_kg,
-        last_updated_at = NOW()
-    WHERE product_id = NEW.product_id;
-
     UPDATE batch_item
     INNER JOIN sale ON sale.batch_id = batch_item.batch_id
     SET batch_item.qty_in_kg = batch_item.qty_in_kg - NEW.qty_sold_kg
@@ -152,7 +282,10 @@ BEGIN
         AND batch_item.product_id = NEW.product_id;
 END
 SQL);
+    }
 
+    private function installProcedures(): void
+    {
         DB::unprepared(<<<'SQL'
 CREATE PROCEDURE sp_complete_pos_sale(
     IN p_batch_id INT,
@@ -192,10 +325,10 @@ BEGIN
         SET v_index = v_index + 1;
     END WHILE;
 
-    SELECT COALESCE(SUM(fn_pos_line_total(jt.qty_sold_kg, product.product_price_per_kilo)), 0)
+    SELECT COALESCE(SUM(fn_pos_line_total(tmp_pos_items.qty_sold_kg, product.product_price_per_kilo)), 0)
     INTO v_total
-    FROM tmp_pos_items AS jt
-    INNER JOIN product ON product.product_id = jt.product_id;
+    FROM tmp_pos_items
+    INNER JOIN product ON product.product_id = tmp_pos_items.product_id;
 
     IF v_total <= 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'POS cart is empty';
@@ -207,9 +340,9 @@ BEGIN
 
     SELECT COUNT(*)
     INTO v_short_stock_count
-    FROM tmp_pos_items AS jt
-    LEFT JOIN inventory ON inventory.product_id = jt.product_id
-    WHERE COALESCE(inventory.current_stock, 0) < jt.qty_sold_kg;
+    FROM tmp_pos_items
+    LEFT JOIN inventory ON inventory.product_id = tmp_pos_items.product_id
+    WHERE COALESCE(inventory.current_stock_kg, 0) < tmp_pos_items.qty_sold_kg;
 
     IF v_short_stock_count > 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient stock for POS sale';
@@ -221,9 +354,9 @@ BEGIN
     SET p_sale_id = LAST_INSERT_ID();
 
     INSERT INTO sale_item (sale_id, product_id, qty_sold_kg, price_per_kg)
-    SELECT p_sale_id, jt.product_id, jt.qty_sold_kg, product.product_price_per_kilo
-    FROM tmp_pos_items AS jt
-    INNER JOIN product ON product.product_id = jt.product_id;
+    SELECT p_sale_id, tmp_pos_items.product_id, tmp_pos_items.qty_sold_kg, product.product_price_per_kilo
+    FROM tmp_pos_items
+    INNER JOIN product ON product.product_id = tmp_pos_items.product_id;
 
     INSERT INTO payment (sale_id, amount, payment_status, payment_date)
     VALUES (p_sale_id, v_total, 'paid', NOW());
@@ -235,18 +368,148 @@ END
 SQL);
     }
 
-    private function dropMySqlRoutines(): void
+    private function installViews(): void
     {
-        foreach (
-            [
-                'trg_sale_item_after_insert',
-                'trg_sale_item_before_insert',
-                'trg_batch_item_after_delete',
-                'trg_batch_item_after_update',
-                'trg_batch_item_after_insert',
-                'trg_product_after_insert',
-            ] as $trigger
-        ) {
+        DB::unprepared(<<<'SQL'
+CREATE VIEW vw_product_inventory AS
+SELECT
+    product.product_id,
+    product.product_name,
+    category.category_name,
+    product.product_price_per_kilo,
+    COALESCE(inventory.current_stock_kg, 0) AS current_stock,
+    inventory.last_updated_at,
+    CASE
+        WHEN COALESCE(inventory.current_stock_kg, 0) <= 0 THEN 'Out of Stock'
+        WHEN COALESCE(inventory.current_stock_kg, 0) < 20 THEN 'Low Stock'
+        ELSE 'In Stock'
+    END AS stock_status
+FROM product
+LEFT JOIN category ON category.category_id = product.category_id
+LEFT JOIN inventory ON inventory.product_id = product.product_id
+SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE VIEW vw_low_stock_products AS
+SELECT
+    product_id,
+    product_name,
+    current_stock,
+    stock_status
+FROM vw_product_inventory
+WHERE current_stock < 20
+SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE VIEW vw_batch_details AS
+SELECT
+    batch.batch_id,
+    batch.batch_date,
+    batch.source_type,
+    batch.batch_status,
+    CASE
+        WHEN batch.source_type = 'Own Livestock' THEN 'Own Livestock'
+        ELSE COALESCE(supplier.supplier_name, 'N/A')
+    END AS supplier_name,
+    user.user_email,
+    batch_item.batch_item_id,
+    batch_item.product_id,
+    product.product_name,
+    batch_item.qty_in_kg,
+    batch_item.cost_per_kg,
+    ROUND(batch_item.qty_in_kg * batch_item.cost_per_kg, 2) AS line_total_cost
+FROM batch_item
+INNER JOIN batch ON batch.batch_id = batch_item.batch_id
+INNER JOIN product ON product.product_id = batch_item.product_id
+INNER JOIN user ON user.user_id = batch.user_id
+LEFT JOIN supplier ON supplier.supplier_id = batch.supplier_id
+SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE VIEW vw_sales_details AS
+SELECT
+    sale.sale_id,
+    sale.sale_date,
+    sale.batch_id,
+    user.user_email,
+    sale_item.sale_item_id,
+    sale_item.product_id,
+    product.product_name,
+    category.category_name,
+    sale_item.qty_sold_kg,
+    sale_item.price_per_kg,
+    ROUND(sale_item.qty_sold_kg * sale_item.price_per_kg, 2) AS line_total
+FROM sale_item
+INNER JOIN sale ON sale.sale_id = sale_item.sale_id
+INNER JOIN product ON product.product_id = sale_item.product_id
+LEFT JOIN category ON category.category_id = product.category_id
+INNER JOIN user ON user.user_id = sale.user_id
+SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE VIEW vw_daily_sales_summary AS
+SELECT
+    DATE(sale_date) AS sale_day,
+    COUNT(DISTINCT sale_id) AS total_transactions,
+    ROUND(SUM(line_total), 2) AS total_sales
+FROM vw_sales_details
+GROUP BY DATE(sale_date)
+SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE VIEW vw_payment_summary AS
+SELECT
+    sale.sale_id,
+    sale.sale_date,
+    sale.batch_id,
+    user.user_email,
+    payment.payment_status,
+    payment.payment_date,
+    payment.amount,
+    COUNT(sale_item.sale_item_id) AS item_count,
+    COALESCE(SUM(sale_item.qty_sold_kg), 0) AS total_qty_sold_kg,
+    ROUND(COALESCE(SUM(sale_item.qty_sold_kg * sale_item.price_per_kg), 0), 2) AS total_line_sales
+FROM sale
+INNER JOIN user ON user.user_id = sale.user_id
+LEFT JOIN payment ON payment.sale_id = sale.sale_id
+LEFT JOIN sale_item ON sale_item.sale_id = sale.sale_id
+GROUP BY
+    sale.sale_id,
+    sale.sale_date,
+    sale.batch_id,
+    user.user_email,
+    payment.payment_status,
+    payment.payment_date,
+    payment.amount
+SQL);
+    }
+
+    private function dropViews(): void
+    {
+        foreach ([
+            'vw_payment_summary',
+            'vw_daily_sales_summary',
+            'vw_sales_details',
+            'vw_batch_details',
+            'vw_low_stock_products',
+            'vw_product_inventory',
+        ] as $view) {
+            DB::unprepared("DROP VIEW IF EXISTS {$view}");
+        }
+    }
+
+    private function dropMySqlObjects(): void
+    {
+        foreach ([
+            'trg_sale_item_after_insert',
+            'trg_sale_item_before_insert',
+            'after_batch_item_update_status',
+            'after_batch_item_update_sync_inventory',
+            'trg_batch_item_after_delete',
+            'trg_batch_item_after_update',
+            'trg_batch_item_after_insert',
+            'trg_product_after_insert',
+        ] as $trigger) {
             DB::unprepared("DROP TRIGGER IF EXISTS {$trigger}");
         }
 

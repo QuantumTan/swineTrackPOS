@@ -24,7 +24,8 @@ class UpdateProductRequest extends FormRequest
     {
         return [
             'product_name' => ['required', 'string', 'max:50'],
-            'category_id' => ['required', 'integer', 'exists:category,category_id'],
+            'category_id' => ['required_without:product_category', 'nullable', 'integer', 'exists:category,category_id'],
+            'product_category' => ['required_without:category_id', 'nullable', 'string', 'max:50'],
             'product_price_per_kilo' => ['required', 'numeric', 'min:0.01'],
         ];
     }

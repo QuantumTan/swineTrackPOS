@@ -18,16 +18,26 @@ class Inventory extends Model
 
     protected $fillable = [
         'product_id',
-        'current_stock',
+        'current_stock_kg',
         'last_updated_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'current_stock' => 'decimal:3',
+            'current_stock_kg' => 'decimal:3',
             'last_updated_at' => 'datetime',
         ];
+    }
+
+    public function getCurrentStockAttribute(): mixed
+    {
+        return $this->current_stock_kg;
+    }
+
+    public function setCurrentStockAttribute(mixed $value): void
+    {
+        $this->attributes['current_stock_kg'] = $value;
     }
 
     public function product(): BelongsTo

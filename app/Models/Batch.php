@@ -34,6 +34,19 @@ class Batch extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (Batch $batch): void {
+            if ($batch->source_type === 'Supplier' && blank($batch->supplier_id)) {
+                throw new \InvalidArgumentException('Supplier-sourced batches must be linked to exactly one supplier.');
+            }
+
+            if ($batch->source_type === 'Own Livestock' && filled($batch->supplier_id)) {
+                throw new \InvalidArgumentException('Own livestock batches must not be linked to a supplier.');
+            }
+        });
+    }
+
     public function manualStatus(): BatchStatus
     {
         return $this->batch_status === BatchStatus::Closed

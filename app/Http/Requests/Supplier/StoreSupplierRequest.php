@@ -27,6 +27,8 @@ class StoreSupplierRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $this->mergeLegacyFields();
+
         $payload = [];
 
         foreach ([
@@ -60,5 +62,29 @@ class StoreSupplierRequest extends FormRequest
         }
 
         $this->merge($payload);
+    }
+
+    private function mergeLegacyFields(): void
+    {
+        $legacyFields = [
+            'supplier_contact_first_name' => 'contact_person_first_name',
+            'supplier_contact_last_name' => 'contact_person_last_name',
+            'supplier_phone_number' => 'contact_number',
+            'supplier_email' => 'email_address',
+            'supplier_address' => 'business_address',
+            'supplier_status' => 'status',
+        ];
+
+        $payload = [];
+
+        foreach ($legacyFields as $legacy => $current) {
+            if ($this->has($legacy) && ! $this->has($current)) {
+                $payload[$current] = $this->input($legacy);
+            }
+        }
+
+        if ($payload !== []) {
+            $this->merge($payload);
+        }
     }
 }
