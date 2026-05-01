@@ -167,7 +167,7 @@
                     name="search"
                     class="form-control"
                     value="{{ $filters['search'] }}"
-                    placeholder="Name, contact, email, phone, or ID"
+                    placeholder="Name, contact, email, phone, address, or ID"
                 >
             </div>
             <div class="col-12 col-md-3">
@@ -201,6 +201,7 @@
                         <th>Contact Person</th>
                         <th>Phone</th>
                         <th>Email</th>
+                        <th>Business Address</th>
                         <th>Status</th>
                         <th>Deliveries</th>
                         <th>Last Delivery</th>
@@ -223,6 +224,7 @@
                                 @endif
                             </td>
                             <td class="supplier-cell-secondary">{{ $supplier->email_address ?: '-' }}</td>
+                            <td class="supplier-cell-secondary">{{ $supplier->business_address ?: '-' }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
                                     'label' => $supplier->status,
@@ -241,7 +243,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="table-empty">No suppliers added yet. Start by creating a supplier profile with contact and purchasing details.</td>
+                            <td colspan="10" class="table-empty">No suppliers added yet. Start by creating a supplier profile with contact and purchasing details.</td>
                         </tr>
                     @endforelse
                 </tbody>

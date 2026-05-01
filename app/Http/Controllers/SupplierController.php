@@ -31,6 +31,7 @@ class SupplierController extends Controller
                         ->orWhere('contact_person_last_name', 'like', '%'.$filters['search'].'%')
                         ->orWhere('contact_number', 'like', '%'.$filters['search'].'%')
                         ->orWhere('email_address', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('business_address', 'like', '%'.$filters['search'].'%')
                         ->orWhere('supplier_id', (int) $filters['search']);
                 });
             })

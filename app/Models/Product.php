@@ -39,6 +39,12 @@ class Product extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (Product $product): void {
+            if (blank($product->category_id)) {
+                throw new \InvalidArgumentException('A product must belong to exactly one category.');
+            }
+        });
+
         static::created(function (Product $product): void {
             $product->inventory()->firstOrCreate([], [
                 'current_stock_kg' => 0,
@@ -87,7 +93,9 @@ class Product extends Model
         $categoryName = trim((string) $value);
 
         if ($categoryName === '') {
-            $this->attributes['category_id'] = null;
+            if (! array_key_exists('category_id', $this->attributes)) {
+                $this->attributes['category_id'] = null;
+            }
 
             return;
         }

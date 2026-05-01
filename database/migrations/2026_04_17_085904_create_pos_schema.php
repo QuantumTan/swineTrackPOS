@@ -28,7 +28,7 @@ return new class extends Migration
 
         Schema::create('product', function (Blueprint $table) {
             $table->increments('product_id');
-            $table->unsignedInteger('category_id')->nullable();
+            $table->unsignedInteger('category_id');
             $table->string('product_name', 50);
             $table->decimal('product_price_per_kilo', 10, 2);
 
@@ -148,6 +148,7 @@ return new class extends Migration
 
         if (DB::getDriverName() !== 'sqlite') {
             DB::statement('ALTER TABLE product ADD CONSTRAINT chk_product_price CHECK (product_price_per_kilo >= 0)');
+            DB::statement("ALTER TABLE batch ADD CONSTRAINT chk_batch_source_supplier CHECK ((source_type = 'Supplier' AND supplier_id IS NOT NULL) OR (source_type = 'Own Livestock' AND supplier_id IS NULL))");
             DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_qty CHECK (qty_in_kg >= 0)');
             DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_cost CHECK (cost_per_kg >= 0)');
             DB::statement('ALTER TABLE inventory ADD CONSTRAINT chk_inventory_stock CHECK (current_stock_kg >= 0)');
