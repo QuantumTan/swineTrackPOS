@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BatchStatus;
 use App\Models\Batch;
 use App\Models\BatchItem;
 use App\Models\Category;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -122,6 +125,8 @@ class PosController extends Controller
                             throw new \RuntimeException('Insufficient batch stock for one or more cart items.');
                         }
                     }
+
+                    $this->syncBatchStatusFromItems($batch->batch_id);
                 }
 
                 $saleId = DB::table('sale')->insertGetId([
@@ -177,7 +182,7 @@ class PosController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     * @param  Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
      */
     private function firstInsufficientStockError($items): ?string
     {
@@ -209,7 +214,7 @@ class PosController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     * @param  Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
      */
     private function findBatchForSale($items): ?Batch
     {
@@ -253,6 +258,36 @@ class PosController extends Controller
             ->exists();
     }
 
+    private function syncBatchStatusFromItems(int $batchId): void
+    {
+        $batch = Batch::query()
+            ->whereKey($batchId)
+            ->first();
+
+        if (! $batch || $batch->batch_status === BatchStatus::Closed) {
+            return;
+        }
+
+        $hasItems = BatchItem::query()
+            ->where('batch_id', $batchId)
+            ->exists();
+
+        if (! $hasItems) {
+            return;
+        }
+
+        $hasRemainingQuantity = BatchItem::query()
+            ->where('batch_id', $batchId)
+            ->where('qty_in_kg', '>', 0)
+            ->exists();
+
+        $batch->forceFill([
+            'batch_status' => $hasRemainingQuantity
+                ? BatchStatus::Open->value
+                : BatchStatus::SoldOut->value,
+        ])->save();
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -282,7 +317,7 @@ class PosController extends Controller
 
         return [
             'sale_id' => $saleId,
-            'sale_date' => optional($sale?->sale_date ? \Carbon\Carbon::parse($sale->sale_date) : null)->format('M d, Y h:i A'),
+            'sale_date' => optional($sale?->sale_date ? Carbon::parse($sale->sale_date) : null)->format('M d, Y h:i A'),
             'batch_id' => $sale?->batch_id,
             'cashier' => $sale?->user_email,
             'items' => $items->map(fn (object $item): array => [

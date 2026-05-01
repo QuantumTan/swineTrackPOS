@@ -83,6 +83,32 @@ BEGIN
             WHERE product_id = NEW.product_id
         ),
         last_updated_at = NOW();
+
+    IF EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = NEW.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = NEW.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = NEW.batch_id;
+        END IF;
+    END IF;
 END
 SQL);
 
@@ -118,18 +144,56 @@ CREATE TRIGGER after_batch_item_update_status
 AFTER UPDATE ON batch_item
 FOR EACH ROW
 BEGIN
-    DECLARE total_qty DECIMAL(10,3);
+    IF EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = NEW.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = NEW.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = NEW.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = NEW.batch_id;
+        END IF;
+    END IF;
 
-    SELECT COALESCE(SUM(qty_in_kg), 0) INTO total_qty
-    FROM batch_item
-    WHERE batch_id = NEW.batch_id;
-
-    IF total_qty = 0 AND (
-        SELECT batch_status FROM batch WHERE batch_id = NEW.batch_id
-    ) != "Closed" THEN
-        UPDATE batch
-        SET batch_status = "Sold Out"
-        WHERE batch_id = NEW.batch_id;
+    IF OLD.batch_id <> NEW.batch_id AND EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = OLD.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = OLD.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = OLD.batch_id;
+        END IF;
     END IF;
 END
 SQL);
@@ -147,6 +211,32 @@ BEGIN
         ),
         last_updated_at = NOW()
     WHERE product_id = OLD.product_id;
+
+    IF EXISTS (
+        SELECT 1
+        FROM batch
+        WHERE batch_id = OLD.batch_id
+            AND batch_status != 'Closed'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+        ) AND NOT EXISTS (
+            SELECT 1
+            FROM batch_item
+            WHERE batch_id = OLD.batch_id
+                AND qty_in_kg > 0
+        ) THEN
+            UPDATE batch
+            SET batch_status = 'Sold Out'
+            WHERE batch_id = OLD.batch_id;
+        ELSE
+            UPDATE batch
+            SET batch_status = 'Open'
+            WHERE batch_id = OLD.batch_id;
+        END IF;
+    END IF;
 END
 SQL);
 
