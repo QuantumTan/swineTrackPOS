@@ -25,7 +25,10 @@ class StockInService
             ]);
 
             $this->createBatchItems($batch, $validated['items']);
-            $this->syncInventory([], $this->quantitiesByProduct($validated['items']));
+
+            if (! $this->batchItemTriggersSyncInventory()) {
+                $this->syncInventory([], $this->quantitiesByProduct($validated['items']));
+            }
 
             return $batch;
         });
@@ -64,20 +67,29 @@ class StockInService
             $batch->items()->delete();
 
             $this->createBatchItems($batch, $validated['items']);
-            $this->syncInventory($originalQuantities, $this->quantitiesByProduct($validated['items']));
+
+            if (! $this->batchItemTriggersSyncInventory()) {
+                $this->syncInventory($originalQuantities, $this->quantitiesByProduct($validated['items']));
+            }
         });
     }
 
     public function delete(Batch $batch): void
     {
         DB::transaction(function () use ($batch) {
-            $originalQuantities = $this->quantitiesByProduct(
-                $batch->items()
-                    ->select('product_id', 'qty_in_kg')
-                    ->get()
-            );
+            $batchItemTriggersSyncInventory = $this->batchItemTriggersSyncInventory();
 
-            $this->syncInventory($originalQuantities, []);
+            if (! $batchItemTriggersSyncInventory) {
+                $originalQuantities = $this->quantitiesByProduct(
+                    $batch->items()
+                        ->select('product_id', 'qty_in_kg')
+                        ->get()
+                );
+
+                $this->syncInventory($originalQuantities, []);
+            }
+
+            $batch->items()->delete();
             $batch->delete();
         });
     }
@@ -209,5 +221,23 @@ class StockInService
         $inventory->current_stock = max(0, round($currentStock + $delta, 3));
         $inventory->last_updated_at = now();
         $inventory->save();
+    }
+
+    private function batchItemTriggersSyncInventory(): bool
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return false;
+        }
+
+        $installedTriggers = DB::table('information_schema.TRIGGERS')
+            ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
+            ->whereIn('TRIGGER_NAME', [
+                'trg_batch_item_after_insert',
+                'trg_batch_item_after_update',
+                'trg_batch_item_after_delete',
+            ])
+            ->count();
+
+        return $installedTriggers === 3;
     }
 }
