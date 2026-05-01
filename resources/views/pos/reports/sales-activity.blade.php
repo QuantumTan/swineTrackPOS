@@ -26,6 +26,40 @@
             'subtitle' => 'Recent sold items with cashier, batch, quantity, price, and computed line total.',
         ])
 
+        <form method="GET" action="{{ route('reports.sales-activity') }}" class="row g-3 m-2">
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold">Search</label>
+                <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    value="{{ $filters['search'] }}"
+                    placeholder="Sale ID, batch, user, product"
+                >
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label fw-semibold">Category</label>
+                <select name="category" class="form-select">
+                    <option value="">All categories</option>
+                    @foreach ($salesCategories as $category)
+                        <option value="{{ $category }}" @selected($filters['category'] === $category)>{{ $category }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label fw-semibold">From</label>
+                <input name="date_from" type="date" class="form-control" value="{{ $filters['date_from'] }}">
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label fw-semibold">To</label>
+                <input name="date_to" type="date" class="form-control" value="{{ $filters['date_to'] }}">
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-success w-100">Apply</button>
+                <a href="{{ route('reports.sales-activity') }}" class="btn btn-light border w-100">Clear</a>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
                 <thead>
@@ -54,7 +88,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td class="text-center text-secondary py-4" colspan="8">No sales activity has been recorded yet.</td>
+                            <td class="text-center text-secondary py-4" colspan="8">No sales activity matches the current filters.</td>
                         </tr>
                     @endforelse
                 </tbody>

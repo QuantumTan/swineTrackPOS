@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -26,7 +27,7 @@ class ReportDataService
     }
 
     /**
-     * @return array{start: \Carbon\Carbon|null, end: \Carbon\Carbon|null, label: string}
+     * @return array{start: Carbon|null, end: Carbon|null, label: string}
      */
     public function periodFor(string $reportType): array
     {
@@ -151,9 +152,9 @@ class ReportDataService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function salesDetails(int $limit = 10): array
+    public function salesDetails(int $limit = 10, array $filters = []): array
     {
-        return DB::table('vw_sales_details')
+        return $this->salesDetailsQuery($filters)
             ->orderByDesc('sale_date')
             ->orderByDesc('sale_id')
             ->limit($limit)
@@ -167,10 +168,25 @@ class ReportDataService
                 'product_name' => $row->product_name,
                 'category_name' => $row->category_name ?? '-',
                 'qty_sold_kg' => $this->formatWeight($row->qty_sold_kg),
+                'qty_sold_value' => (float) $row->qty_sold_kg,
                 'price_per_kg' => $this->formatMoney($row->price_per_kg),
                 'line_total' => $this->formatMoney($row->line_total),
                 'line_total_value' => (float) $row->line_total,
             ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function salesActivityCategories(): array
+    {
+        return DB::table('vw_sales_details')
+            ->select('category_name')
+            ->whereNotNull('category_name')
+            ->distinct()
+            ->orderBy('category_name')
+            ->pluck('category_name')
             ->all();
     }
 
@@ -257,6 +273,71 @@ class ReportDataService
                 'total_qty_sold_kg' => $this->formatWeight($row->total_qty_sold_kg),
                 'total_qty_sold_value' => (float) $row->total_qty_sold_kg,
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function salesDetailsQuery(array $filters)
+    {
+        $query = DB::table('vw_sales_details');
+
+        $search = trim((string) ($filters['search'] ?? ''));
+        $category = trim((string) ($filters['category'] ?? ''));
+        $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['date_to'] ?? ''));
+
+        if ($search !== '') {
+            $like = "%{$search}%";
+            $saleId = $this->prefixedIdSearchValue($search, 's');
+            $batchId = $this->prefixedIdSearchValue($search, 'b');
+            $saleItemId = $this->prefixedIdSearchValue($search, 'si');
+
+            $query->where(function ($query) use ($like, $saleId, $batchId, $saleItemId): void {
+                $query
+                    ->where('user_email', 'like', $like)
+                    ->orWhere('product_name', 'like', $like)
+                    ->orWhere('category_name', 'like', $like);
+
+                if ($saleId !== null) {
+                    $query->orWhere('sale_id', $saleId);
+                }
+
+                if ($batchId !== null) {
+                    $query->orWhere('batch_id', $batchId);
+                }
+
+                if ($saleItemId !== null) {
+                    $query->orWhere('sale_item_id', $saleItemId);
+                }
+            });
+        }
+
+        if ($category !== '') {
+            $query->where('category_name', $category);
+        }
+
+        if ($dateFrom !== '') {
+            $query->where('sale_date', '>=', Carbon::parse($dateFrom)->startOfDay());
+        }
+
+        if ($dateTo !== '') {
+            $query->where('sale_date', '<=', Carbon::parse($dateTo)->endOfDay());
+        }
+
+        return $query;
+    }
+
+    private function prefixedIdSearchValue(string $search, string $prefix): ?int
+    {
+        $normalized = preg_replace('/\s+/', '', strtolower($search));
+        $quotedPrefix = preg_quote($prefix, '/');
+
+        if (! preg_match("/^{$quotedPrefix}0*(\d+)$/", $normalized, $matches)) {
+            return ctype_digit($normalized) && $prefix === 's' ? (int) $normalized : null;
+        }
+
+        return (int) $matches[1];
     }
 
     /**
@@ -560,14 +641,14 @@ class ReportDataService
         return number_format((float) ($value ?? 0), 3).' kg';
     }
 
-    private function formatDate(string|null $value): string
+    private function formatDate(?string $value): string
     {
-        return $value ? \Carbon\Carbon::parse($value)->format('d M Y') : '-';
+        return $value ? Carbon::parse($value)->format('d M Y') : '-';
     }
 
-    private function formatDateTime(string|null $value): string
+    private function formatDateTime(?string $value): string
     {
-        return $value ? \Carbon\Carbon::parse($value)->format('d M Y, h:i A') : '-';
+        return $value ? Carbon::parse($value)->format('d M Y, h:i A') : '-';
     }
 
     /**

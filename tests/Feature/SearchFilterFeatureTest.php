@@ -3,7 +3,10 @@
 use App\Models\Batch;
 use App\Models\BatchItem;
 use App\Models\Category;
+use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Models\Supplier;
 use App\Models\User;
 
@@ -175,4 +178,70 @@ test('stock-in page supports effective status filters', function () {
     $response->assertSee($soldOutBatch->display_id);
     $response->assertDontSee($openBatch->display_id);
     $response->assertDontSee($closedBatch->display_id);
+});
+
+test('sales activity ledger supports search category and date filters', function () {
+    $user = User::factory()->create(['user_email' => 'cashier@example.com']);
+    $premium = Category::query()->create(['category_name' => 'Premium Cuts']);
+    $standard = Category::query()->create(['category_name' => 'Standard Cuts']);
+    $belly = Product::query()->create([
+        'category_id' => $premium->category_id,
+        'product_name' => 'Pork Belly',
+        'product_price_per_kilo' => 320,
+    ]);
+    $kasim = Product::query()->create([
+        'category_id' => $standard->category_id,
+        'product_name' => 'Pork Kasim',
+        'product_price_per_kilo' => 280,
+    ]);
+    $batch = Batch::query()->create([
+        'supplier_id' => null,
+        'user_id' => $user->user_id,
+        'batch_date' => now()->subDays(2),
+        'source_type' => 'Own Livestock',
+        'batch_status' => 'Open',
+    ]);
+    $matchingSale = Sale::query()->create([
+        'batch_id' => $batch->batch_id,
+        'user_id' => $user->user_id,
+        'sale_date' => '2026-04-20 10:00:00',
+    ]);
+    $otherSale = Sale::query()->create([
+        'batch_id' => $batch->batch_id,
+        'user_id' => $user->user_id,
+        'sale_date' => '2026-04-25 10:00:00',
+    ]);
+
+    SaleItem::query()->create([
+        'sale_id' => $matchingSale->sale_id,
+        'product_id' => $belly->product_id,
+        'qty_sold_kg' => 1.250,
+        'price_per_kg' => 320,
+    ]);
+    SaleItem::query()->create([
+        'sale_id' => $otherSale->sale_id,
+        'product_id' => $kasim->product_id,
+        'qty_sold_kg' => 1.000,
+        'price_per_kg' => 280,
+    ]);
+    Payment::query()->create([
+        'sale_id' => $matchingSale->sale_id,
+        'amount' => 400,
+        'payment_status' => 'paid',
+        'payment_date' => '2026-04-20 10:05:00',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('reports.sales-activity', [
+            'search' => 'Belly',
+            'category' => 'Premium Cuts',
+            'date_from' => '2026-04-20',
+            'date_to' => '2026-04-20',
+        ]));
+
+    $response->assertOk();
+    $response->assertSee('Pork Belly');
+    $response->assertSee('Premium Cuts');
+    $response->assertDontSee('Pork Kasim');
 });
