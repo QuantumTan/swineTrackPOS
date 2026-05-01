@@ -56,6 +56,56 @@ END
 SQL);
 
         DB::unprepared(<<<'SQL'
+CREATE TRIGGER trg_batch_item_after_insert
+AFTER INSERT ON batch_item
+FOR EACH ROW
+BEGIN
+    INSERT INTO inventory (product_id, current_stock, last_updated_at)
+    VALUES (NEW.product_id, NEW.qty_in_kg, NOW())
+    ON DUPLICATE KEY UPDATE
+        current_stock = current_stock + NEW.qty_in_kg,
+        last_updated_at = NOW();
+END
+SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE TRIGGER trg_batch_item_after_update
+AFTER UPDATE ON batch_item
+FOR EACH ROW
+BEGIN
+    IF OLD.product_id = NEW.product_id THEN
+        UPDATE inventory
+        SET current_stock = GREATEST(current_stock + (NEW.qty_in_kg - OLD.qty_in_kg), 0),
+            last_updated_at = NOW()
+        WHERE product_id = NEW.product_id;
+    ELSE
+        UPDATE inventory
+        SET current_stock = GREATEST(current_stock - OLD.qty_in_kg, 0),
+            last_updated_at = NOW()
+        WHERE product_id = OLD.product_id;
+
+        INSERT INTO inventory (product_id, current_stock, last_updated_at)
+        VALUES (NEW.product_id, NEW.qty_in_kg, NOW())
+        ON DUPLICATE KEY UPDATE
+            current_stock = current_stock + NEW.qty_in_kg,
+            last_updated_at = NOW();
+    END IF;
+END
+SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE TRIGGER trg_batch_item_after_delete
+AFTER DELETE ON batch_item
+FOR EACH ROW
+BEGIN
+    UPDATE inventory
+    SET current_stock = GREATEST(current_stock - OLD.qty_in_kg, 0),
+        last_updated_at = NOW()
+    WHERE product_id = OLD.product_id;
+END
+SQL);
+
+        DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_sale_item_before_insert
 BEFORE INSERT ON sale_item
 FOR EACH ROW
@@ -191,6 +241,8 @@ SQL);
             [
                 'trg_sale_item_after_insert',
                 'trg_sale_item_before_insert',
+                'trg_batch_item_after_delete',
+                'trg_batch_item_after_update',
                 'trg_batch_item_after_insert',
                 'trg_product_after_insert',
             ] as $trigger
