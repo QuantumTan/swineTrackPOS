@@ -3,10 +3,25 @@
 use App\Enums\BatchStatus;
 use App\Models\Batch;
 use App\Models\BatchItem;
+use App\Models\Category;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
+
+function makeStockInProduct(string $name, float $price, string $categoryName = 'Test Category'): Product
+{
+    $category = Category::create([
+        'category_name' => $categoryName,
+        'category_description' => 'Test fixture category',
+    ]);
+
+    return Product::create([
+        'category_id' => $category->category_id,
+        'product_name' => $name,
+        'product_price_per_kilo' => $price,
+    ]);
+}
 
 test('new stock-in records inventory without requiring a status field', function () {
     $user = User::factory()->create();
@@ -14,11 +29,7 @@ test('new stock-in records inventory without requiring a status field', function
         'supplier_name' => 'Central Farm Supply',
         'supplier_phone_number' => '09171234567',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Ham',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 300.00,
-    ]);
+    $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
 
     $response = $this
         ->actingAs($user)
@@ -57,11 +68,7 @@ test('cannot create a new stock-in while another batch remains open', function (
         'supplier_name' => 'Central Farm Supply',
         'supplier_phone_number' => '09171234567',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Ham',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 300.00,
-    ]);
+    $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
 
     Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -119,11 +126,7 @@ test('can create a new stock-in after prior batches are terminal', function () {
         'supplier_name' => 'Central Farm Supply',
         'supplier_phone_number' => '09171234567',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Ham',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 300.00,
-    ]);
+    $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
 
     Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -162,11 +165,7 @@ test('stock-in page shows batch status and exposes it on edit', function () {
         'supplier_name' => 'South Valley Foods',
         'supplier_phone_number' => '09170000000',
     ]);
-    $product = Product::create([
-        'product_name' => 'Ground Pork',
-        'product_category' => 'Ground Meat',
-        'product_price_per_kilo' => 240.00,
-    ]);
+    $product = makeStockInProduct('Ground Pork', 240.00, 'Ground Meat');
 
     $batch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -201,11 +200,7 @@ test('updating a stock-in record can change its manual status to closed', functi
         'supplier_name' => 'West Farm Supply',
         'supplier_phone_number' => '09173334444',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Kasim',
-        'product_category' => 'Standard Cuts',
-        'product_price_per_kilo' => 275.00,
-    ]);
+    $product = makeStockInProduct('Pork Kasim', 275.00, 'Standard Cuts');
 
     $batch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -251,11 +246,7 @@ test('cannot mark a batch open while another batch is already open', function ()
         'supplier_name' => 'East Farm Supply',
         'supplier_phone_number' => '09174445555',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Belly',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 320.00,
-    ]);
+    $product = makeStockInProduct('Pork Belly', 320.00, 'Premium Cuts');
 
     $openBatch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -319,11 +310,7 @@ test('zero-quantity batches are shown as sold out automatically', function () {
         'supplier_name' => 'Delta Farm Supply',
         'supplier_phone_number' => '09178889999',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Loin',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 310.00,
-    ]);
+    $product = makeStockInProduct('Pork Loin', 310.00, 'Premium Cuts');
 
     $batch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -355,11 +342,7 @@ test('sold-out batches no longer block creating a new stock-in', function () {
         'supplier_name' => 'Harvest Farm Supply',
         'supplier_phone_number' => '09179990000',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Chop',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 305.00,
-    ]);
+    $product = makeStockInProduct('Pork Chop', 305.00, 'Premium Cuts');
 
     $soldOutBatch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -405,16 +388,8 @@ test('updating a stock-in record recalculates inventory by product delta', funct
         'supplier_name' => 'North Ridge Meats',
         'supplier_phone_number' => '09175557777',
     ]);
-    $productA = Product::create([
-        'product_name' => 'Pork Belly',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 320.00,
-    ]);
-    $productB = Product::create([
-        'product_name' => 'Ground Pork',
-        'product_category' => 'Ground Meat',
-        'product_price_per_kilo' => 250.00,
-    ]);
+    $productA = makeStockInProduct('Pork Belly', 320.00, 'Premium Cuts');
+    $productB = makeStockInProduct('Ground Pork', 250.00, 'Ground Meat');
 
     $productA->inventory()->update([
         'current_stock_kg' => 10.000,
@@ -476,11 +451,7 @@ test('deleting a stock-in record removes its quantities from inventory', functio
         'supplier_name' => 'Metro Cuts Trading',
         'supplier_phone_number' => '09176668888',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Shoulder',
-        'product_category' => 'Standard Cuts',
-        'product_price_per_kilo' => 280.00,
-    ]);
+    $product = makeStockInProduct('Pork Shoulder', 280.00, 'Standard Cuts');
 
     $product->inventory()->update([
         'current_stock_kg' => 6.000,
@@ -522,11 +493,7 @@ test('deleting a stock-in record removes its quantities from inventory', functio
 
 test('supplier source stock-in requires a supplier link', function () {
     $user = User::factory()->create();
-    $product = Product::create([
-        'product_name' => 'Pork Ham',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 300.00,
-    ]);
+    $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
 
     $response = $this
         ->from(route('stock-ins.index'))
@@ -578,11 +545,7 @@ test('cannot create stock-in with an inactive supplier', function () {
         'supplier_name' => 'Inactive Farm Supply',
         'supplier_status' => 'Inactive',
     ]);
-    $product = Product::create([
-        'product_name' => 'Pork Ham',
-        'product_category' => 'Premium Cuts',
-        'product_price_per_kilo' => 300.00,
-    ]);
+    $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
 
     $response = $this
         ->from(route('stock-ins.index'))
