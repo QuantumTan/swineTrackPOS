@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -64,20 +65,24 @@ class ReportDataService
     {
         $period = $this->periodFor($reportType);
 
-        return DB::table('vw_daily_sales_summary')
-            ->when($period['start'], fn ($query) => $query->whereBetween('sale_day', [
-                $period['start']->toDateString(),
-                $period['end']->toDateString(),
-            ]))
+        return $this->dailySalesSummaryQuery($reportType)
             ->orderBy('sale_day')
             ->get()
-            ->map(fn (object $row): array => [
-                'label' => $this->formatDate($row->sale_day),
-                'total_sales' => $this->formatMoney($row->total_sales),
-                'total_sales_value' => (float) $row->total_sales,
-                'transactions' => (int) $row->total_transactions,
-            ])
+            ->map(fn (object $row): array => $this->formatDailySalesSummaryRow($row))
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function paginatedDailySalesSummary(string $reportType, int $perPage = 10, array $filters = [], string $pageName = 'daily_page'): LengthAwarePaginator
+    {
+        return $this->dailySalesSummaryQuery($reportType, $filters)
+            ->orderByDesc('sale_day')
+            ->paginate($perPage, ['*'], $pageName)
+            ->withQueryString()
+            ->through(fn (object $row): array => $this->formatDailySalesSummaryRow($row));
     }
 
     /**
@@ -159,21 +164,22 @@ class ReportDataService
             ->orderByDesc('sale_id')
             ->limit($limit)
             ->get()
-            ->map(fn (object $row): array => [
-                'sale_id' => $this->formatSaleId($row->sale_id),
-                'sale_date' => $this->formatDateTime($row->sale_date),
-                'batch_id' => $this->formatBatchId($row->batch_id),
-                'user_email' => $row->user_email,
-                'sale_item_id' => $this->formatSaleItemId($row->sale_item_id),
-                'product_name' => $row->product_name,
-                'category_name' => $row->category_name ?? '-',
-                'qty_sold_kg' => $this->formatWeight($row->qty_sold_kg),
-                'qty_sold_value' => (float) $row->qty_sold_kg,
-                'price_per_kg' => $this->formatMoney($row->price_per_kg),
-                'line_total' => $this->formatMoney($row->line_total),
-                'line_total_value' => (float) $row->line_total,
-            ])
+            ->map(fn (object $row): array => $this->formatSalesDetailRow($row))
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function paginatedSalesDetails(int $perPage = 10, array $filters = [], string $pageName = 'sales_page'): LengthAwarePaginator
+    {
+        return $this->salesDetailsQuery($filters)
+            ->orderByDesc('sale_date')
+            ->orderByDesc('sale_id')
+            ->paginate($perPage, ['*'], $pageName)
+            ->withQueryString()
+            ->through(fn (object $row): array => $this->formatSalesDetailRow($row));
     }
 
     /**
@@ -195,24 +201,40 @@ class ReportDataService
      */
     public function productSalesSummary(string $reportType): array
     {
+        return $this->productSalesSummaryQuery($reportType)
+            ->orderByDesc('revenue')
+            ->get()
+            ->map(fn (object $row): array => $this->formatProductSalesSummaryRow($row))
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function paginatedProductSalesSummary(string $reportType, int $perPage = 10, array $filters = [], string $pageName = 'products_page'): LengthAwarePaginator
+    {
+        return $this->productSalesSummaryQuery($reportType, $filters)
+            ->orderByDesc('revenue')
+            ->paginate($perPage, ['*'], $pageName)
+            ->withQueryString()
+            ->through(fn (object $row): array => $this->formatProductSalesSummaryRow($row));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function productSalesCategories(string $reportType): array
+    {
         $period = $this->periodFor($reportType);
 
         return DB::table('vw_sales_details')
             ->when($period['start'], fn ($query) => $query->whereBetween('sale_date', [$period['start'], $period['end']]))
-            ->select('product_name', 'category_name')
-            ->selectRaw('SUM(qty_sold_kg) AS total_qty_sold')
-            ->selectRaw('SUM(line_total) AS revenue')
-            ->groupBy('product_name', 'category_name')
-            ->orderByDesc('revenue')
-            ->get()
-            ->map(fn (object $row): array => [
-                'product_name' => $row->product_name,
-                'category_name' => $row->category_name ?? '-',
-                'qty_sold_kg' => $this->formatWeight($row->total_qty_sold),
-                'qty_sold_value' => (float) $row->total_qty_sold,
-                'revenue' => $this->formatMoney($row->revenue),
-                'revenue_value' => (float) $row->revenue,
-            ])
+            ->select('category_name')
+            ->whereNotNull('category_name')
+            ->distinct()
+            ->orderBy('category_name')
+            ->pluck('category_name')
             ->all();
     }
 
@@ -263,16 +285,21 @@ class ReportDataService
         return DB::table('vw_payment_summary')
             ->where('payment_status', 'paid')
             ->get()
-            ->map(fn (object $row): array => [
-                'sale_id' => $this->formatSaleId($row->sale_id),
-                'sale_date' => $this->formatDateTime($row->sale_date),
-                'payment_status' => $row->payment_status,
-                'amount' => $this->formatMoney($row->amount),
-                'amount_value' => (float) $row->amount,
-                'item_count' => (int) $row->item_count,
-                'total_qty_sold_kg' => $this->formatWeight($row->total_qty_sold_kg),
-                'total_qty_sold_value' => (float) $row->total_qty_sold_kg,
-            ]);
+            ->map(fn (object $row): array => $this->formatPaymentSummaryRow($row));
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function paginatedPaymentSummary(int $perPage = 10, array $filters = [], string $pageName = 'payments_page'): LengthAwarePaginator
+    {
+        return $this->paymentSummaryQuery($filters)
+            ->orderByDesc('sale_date')
+            ->orderByDesc('sale_id')
+            ->paginate($perPage, ['*'], $pageName)
+            ->withQueryString()
+            ->through(fn (object $row): array => $this->formatPaymentSummaryRow($row));
     }
 
     /**
@@ -326,6 +353,176 @@ class ReportDataService
         }
 
         return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function dailySalesSummaryQuery(string $reportType, array $filters = [])
+    {
+        $period = $this->periodFor($reportType);
+        $query = DB::table('vw_daily_sales_summary')
+            ->when($period['start'], fn ($query) => $query->whereBetween('sale_day', [
+                $period['start']->toDateString(),
+                $period['end']->toDateString(),
+            ]));
+
+        $dateFrom = trim((string) ($filters['daily_date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['daily_date_to'] ?? ''));
+
+        if ($dateFrom !== '') {
+            $query->where('sale_day', '>=', Carbon::parse($dateFrom)->toDateString());
+        }
+
+        if ($dateTo !== '') {
+            $query->where('sale_day', '<=', Carbon::parse($dateTo)->toDateString());
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function productSalesSummaryQuery(string $reportType, array $filters = [])
+    {
+        $period = $this->periodFor($reportType);
+        $query = DB::table('vw_sales_details')
+            ->when($period['start'], fn ($query) => $query->whereBetween('sale_date', [$period['start'], $period['end']]));
+
+        $search = trim((string) ($filters['product_search'] ?? ''));
+        $category = trim((string) ($filters['product_category'] ?? ''));
+
+        if ($search !== '') {
+            $like = "%{$search}%";
+
+            $query->where(function ($query) use ($like): void {
+                $query
+                    ->where('product_name', 'like', $like)
+                    ->orWhere('category_name', 'like', $like);
+            });
+        }
+
+        if ($category !== '') {
+            $query->where('category_name', $category);
+        }
+
+        return $query
+            ->select('product_name', 'category_name')
+            ->selectRaw('SUM(qty_sold_kg) AS total_qty_sold')
+            ->selectRaw('SUM(line_total) AS revenue')
+            ->groupBy('product_name', 'category_name');
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function paymentSummaryQuery(array $filters)
+    {
+        $query = DB::table('vw_payment_summary');
+
+        $search = trim((string) ($filters['payment_search'] ?? ''));
+        $status = trim((string) ($filters['payment_status'] ?? ''));
+        $dateFrom = trim((string) ($filters['payment_date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['payment_date_to'] ?? ''));
+
+        if ($search !== '') {
+            $like = "%{$search}%";
+            $saleId = $this->prefixedIdSearchValue($search, 's');
+            $batchId = $this->prefixedIdSearchValue($search, 'b');
+
+            $query->where(function ($query) use ($like, $saleId, $batchId): void {
+                $query->where('user_email', 'like', $like);
+
+                if ($saleId !== null) {
+                    $query->orWhere('sale_id', $saleId);
+                }
+
+                if ($batchId !== null) {
+                    $query->orWhere('batch_id', $batchId);
+                }
+            });
+        }
+
+        if ($status !== '') {
+            $query->where('payment_status', $status);
+        }
+
+        if ($dateFrom !== '') {
+            $query->where('sale_date', '>=', Carbon::parse($dateFrom)->startOfDay());
+        }
+
+        if ($dateTo !== '') {
+            $query->where('sale_date', '<=', Carbon::parse($dateTo)->endOfDay());
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatSalesDetailRow(object $row): array
+    {
+        return [
+            'sale_id' => $this->formatSaleId($row->sale_id),
+            'sale_date' => $this->formatDateTime($row->sale_date),
+            'batch_id' => $this->formatBatchId($row->batch_id),
+            'user_email' => $row->user_email,
+            'sale_item_id' => $this->formatSaleItemId($row->sale_item_id),
+            'product_name' => $row->product_name,
+            'category_name' => $row->category_name ?? '-',
+            'qty_sold_kg' => $this->formatWeight($row->qty_sold_kg),
+            'qty_sold_value' => (float) $row->qty_sold_kg,
+            'price_per_kg' => $this->formatMoney($row->price_per_kg),
+            'line_total' => $this->formatMoney($row->line_total),
+            'line_total_value' => (float) $row->line_total,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatPaymentSummaryRow(object $row): array
+    {
+        return [
+            'sale_id' => $this->formatSaleId($row->sale_id),
+            'sale_date' => $this->formatDateTime($row->sale_date),
+            'payment_status' => $row->payment_status ?? 'pending',
+            'amount' => $this->formatMoney($row->amount),
+            'amount_value' => (float) $row->amount,
+            'item_count' => (int) $row->item_count,
+            'total_qty_sold_kg' => $this->formatWeight($row->total_qty_sold_kg),
+            'total_qty_sold_value' => (float) $row->total_qty_sold_kg,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatDailySalesSummaryRow(object $row): array
+    {
+        return [
+            'label' => $this->formatDate($row->sale_day),
+            'total_sales' => $this->formatMoney($row->total_sales),
+            'total_sales_value' => (float) $row->total_sales,
+            'transactions' => (int) $row->total_transactions,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatProductSalesSummaryRow(object $row): array
+    {
+        return [
+            'product_name' => $row->product_name,
+            'category_name' => $row->category_name ?? '-',
+            'qty_sold_kg' => $this->formatWeight($row->total_qty_sold),
+            'qty_sold_value' => (float) $row->total_qty_sold,
+            'revenue' => $this->formatMoney($row->revenue),
+            'revenue_value' => (float) $row->revenue,
+        ];
     }
 
     private function prefixedIdSearchValue(string $search, string $prefix): ?int

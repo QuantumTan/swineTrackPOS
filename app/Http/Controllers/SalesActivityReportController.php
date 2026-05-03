@@ -17,6 +17,10 @@ class SalesActivityReportController extends Controller
             'category' => ['nullable', 'string', 'max:100'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'payment_search' => ['nullable', 'string', 'max:100'],
+            'payment_status' => ['nullable', 'in:paid,pending'],
+            'payment_date_from' => ['nullable', 'date'],
+            'payment_date_to' => ['nullable', 'date', 'after_or_equal:payment_date_from'],
         ]);
 
         $filters = [
@@ -24,19 +28,25 @@ class SalesActivityReportController extends Controller
             'category' => trim((string) ($filters['category'] ?? '')),
             'date_from' => $filters['date_from'] ?? '',
             'date_to' => $filters['date_to'] ?? '',
+            'payment_search' => trim((string) ($filters['payment_search'] ?? '')),
+            'payment_status' => trim((string) ($filters['payment_status'] ?? '')),
+            'payment_date_from' => $filters['payment_date_from'] ?? '',
+            'payment_date_to' => $filters['payment_date_to'] ?? '',
         ];
 
-        $salesDetails = $this->reports->salesDetails(50, $filters);
-        $paymentSummary = $this->reports->paymentSummary();
-        $visibleSaleIds = collect($salesDetails)->pluck('sale_id')->unique();
-        $totalSales = collect($salesDetails)->sum(fn (array $row): float => $row['line_total_value']);
-        $totalQuantity = collect($salesDetails)->sum(fn (array $row): float => $row['qty_sold_value']);
+        $salesDetails = $this->reports->paginatedSalesDetails(10, $filters);
+        $paymentSummary = $this->reports->paginatedPaymentSummary(10, $filters);
+        $paidPaymentSummary = $this->reports->paymentSummary();
+        $visibleSalesDetails = collect($salesDetails->items());
+        $visibleSaleIds = $visibleSalesDetails->pluck('sale_id')->unique();
+        $totalSales = $visibleSalesDetails->sum(fn (array $row): float => $row['line_total_value']);
+        $totalQuantity = $visibleSalesDetails->sum(fn (array $row): float => $row['qty_sold_value']);
 
         return view('pos.reports.sales-activity', [
             'summaryCards' => [
                 [
                     'label' => 'Sales Activity',
-                    'value' => (string) count($salesDetails),
+                    'value' => (string) $salesDetails->total(),
                     'trend' => 'Recent sold item lines',
                     'icon' => 'bi-receipt',
                 ],
@@ -48,7 +58,7 @@ class SalesActivityReportController extends Controller
                 ],
                 [
                     'label' => 'Paid Sales',
-                    'value' => (string) $paymentSummary->whereIn('sale_id', $visibleSaleIds)->count(),
+                    'value' => (string) $paidPaymentSummary->whereIn('sale_id', $visibleSaleIds)->count(),
                     'trend' => 'Visible paid transactions',
                     'icon' => 'bi-check2-circle',
                 ],
