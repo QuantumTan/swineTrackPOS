@@ -26,6 +26,7 @@
             'items' => [
                 ['label' => 'Inventory', 'route' => 'inventory.index', 'icon' => 'bi-archive'],
                 ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'bi-file-earmark-text'],
+                ['label' => 'Sales Activity', 'route' => 'reports.sales-activity', 'icon' => 'bi-receipt'],
             ],
         ],
     ];

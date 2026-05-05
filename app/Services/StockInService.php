@@ -25,7 +25,10 @@ class StockInService
             ]);
 
             $this->createBatchItems($batch, $validated['items']);
-            $this->syncInventory([], $this->quantitiesByProduct($validated['items']));
+
+            if (! $this->batchItemTriggersSyncInventory()) {
+                $this->syncInventory([], $this->quantitiesByProduct($validated['items']));
+            }
 
             return $batch;
         });
@@ -33,9 +36,11 @@ class StockInService
 
     private function ensureNoOpenBatchExists(): void
     {
+        // Check if there's any batch that is NOT Closed AND has items with remaining quantity
+        // Use a raw subquery to ensure the check is precise
         $openBatchExists = Batch::query()
             ->where('batch_status', '!=', BatchStatus::Closed->value)
-            ->whereHas('items', fn ($query) => $query->where('qty_in_kg', '>', 0))
+            ->whereRaw('batch.batch_id IN (SELECT DISTINCT batch_id FROM batch_item WHERE qty_in_kg > 0)')
             ->exists();
 
         if ($openBatchExists) {
@@ -64,20 +69,29 @@ class StockInService
             $batch->items()->delete();
 
             $this->createBatchItems($batch, $validated['items']);
-            $this->syncInventory($originalQuantities, $this->quantitiesByProduct($validated['items']));
+
+            if (! $this->batchItemTriggersSyncInventory()) {
+                $this->syncInventory($originalQuantities, $this->quantitiesByProduct($validated['items']));
+            }
         });
     }
 
     public function delete(Batch $batch): void
     {
         DB::transaction(function () use ($batch) {
-            $originalQuantities = $this->quantitiesByProduct(
-                $batch->items()
-                    ->select('product_id', 'qty_in_kg')
-                    ->get()
-            );
+            $batchItemTriggersSyncInventory = $this->batchItemTriggersSyncInventory();
 
-            $this->syncInventory($originalQuantities, []);
+            if (! $batchItemTriggersSyncInventory) {
+                $originalQuantities = $this->quantitiesByProduct(
+                    $batch->items()
+                        ->select('product_id', 'qty_in_kg')
+                        ->get()
+                );
+
+                $this->syncInventory($originalQuantities, []);
+            }
+
+            $batch->items()->delete();
             $batch->delete();
         });
     }
@@ -203,11 +217,29 @@ class StockInService
     private function applyInventoryDelta(int $productId, float $delta): void
     {
         $inventory = Inventory::firstOrNew(['product_id' => $productId]);
-        $currentStock = (float) ($inventory->current_stock ?? 0);
+        $currentStock = (float) ($inventory->current_stock_kg ?? 0);
 
         $inventory->product_id = $productId;
-        $inventory->current_stock = max(0, round($currentStock + $delta, 3));
+        $inventory->current_stock_kg = max(0, round($currentStock + $delta, 3));
         $inventory->last_updated_at = now();
         $inventory->save();
+    }
+
+    private function batchItemTriggersSyncInventory(): bool
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return false;
+        }
+
+        $installedTriggers = DB::table('information_schema.TRIGGERS')
+            ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
+            ->whereIn('TRIGGER_NAME', [
+                'trg_batch_item_after_insert',
+                'after_batch_item_update_sync_inventory',
+                'trg_batch_item_after_delete',
+            ])
+            ->count();
+
+        return $installedTriggers === 3;
     }
 }

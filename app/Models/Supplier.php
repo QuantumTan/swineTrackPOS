@@ -19,9 +19,15 @@ class Supplier extends Model
 
     protected $fillable = [
         'supplier_name',
+        'supplier_contact_first_name',
+        'supplier_contact_last_name',
+        'supplier_phone_number',
+        'supplier_email',
+        'supplier_address',
         'contact_person_first_name',
         'contact_person_last_name',
         'contact_number',
+        'supplier_status',
         'status',
         'email_address',
         'business_address',
@@ -55,6 +61,66 @@ class Supplier extends Model
     public function getStatusTypeAttribute(): string
     {
         return $this->status === 'Active' ? 'success' : 'neutral';
+    }
+
+    public function getSupplierContactFirstNameAttribute(): ?string
+    {
+        return $this->contact_person_first_name;
+    }
+
+    public function setSupplierContactFirstNameAttribute(?string $value): void
+    {
+        $this->attributes['contact_person_first_name'] = $value;
+    }
+
+    public function getSupplierContactLastNameAttribute(): ?string
+    {
+        return $this->contact_person_last_name;
+    }
+
+    public function setSupplierContactLastNameAttribute(?string $value): void
+    {
+        $this->attributes['contact_person_last_name'] = $value;
+    }
+
+    public function getSupplierPhoneNumberAttribute(): ?string
+    {
+        return $this->contact_number;
+    }
+
+    public function setSupplierPhoneNumberAttribute(?string $value): void
+    {
+        $this->attributes['contact_number'] = $value;
+    }
+
+    public function getSupplierEmailAttribute(): ?string
+    {
+        return $this->email_address;
+    }
+
+    public function setSupplierEmailAttribute(?string $value): void
+    {
+        $this->attributes['email_address'] = $value;
+    }
+
+    public function getSupplierAddressAttribute(): ?string
+    {
+        return $this->business_address;
+    }
+
+    public function setSupplierAddressAttribute(?string $value): void
+    {
+        $this->attributes['business_address'] = $value;
+    }
+
+    public function getSupplierStatusAttribute(): ?string
+    {
+        return $this->status;
+    }
+
+    public function setSupplierStatusAttribute(?string $value): void
+    {
+        $this->attributes['status'] = $value;
     }
 
     public function getFormattedLastDeliveryAttribute(): ?string

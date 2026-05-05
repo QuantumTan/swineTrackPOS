@@ -159,6 +159,39 @@
             'aside' => $supplierHeaderAside,
         ])
 
+        <form method="GET" action="{{ route('suppliers.index') }}" class="row g-3 m-2">
+            <div class="col-12 col-md-5">
+                <label class="form-label fw-semibold">Search</label>
+                <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    value="{{ $filters['search'] }}"
+                    placeholder="Name, contact, email, phone, address, or ID"
+                >
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label fw-semibold">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All statuses</option>
+                    <option value="Active" @selected($filters['status'] === 'Active')>Active</option>
+                    <option value="Inactive" @selected($filters['status'] === 'Inactive')>Inactive</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label fw-semibold">Deliveries</label>
+                <select name="delivery" class="form-select">
+                    <option value="">All</option>
+                    <option value="with_history" @selected($filters['delivery'] === 'with_history')>With History</option>
+                    <option value="no_history" @selected($filters['delivery'] === 'no_history')>No History</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-success w-100">Apply</button>
+                <a href="{{ route('suppliers.index') }}" class="btn btn-light border w-100">Clear</a>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0 supplier-table">
                 <thead>
@@ -168,6 +201,7 @@
                         <th>Contact Person</th>
                         <th>Phone</th>
                         <th>Email</th>
+                        <th>Business Address</th>
                         <th>Status</th>
                         <th>Deliveries</th>
                         <th>Last Delivery</th>
@@ -190,6 +224,7 @@
                                 @endif
                             </td>
                             <td class="supplier-cell-secondary">{{ $supplier->email_address ?: '-' }}</td>
+                            <td class="supplier-cell-secondary">{{ $supplier->business_address ?: '-' }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
                                     'label' => $supplier->status,
@@ -208,7 +243,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="table-empty">No suppliers added yet. Start by creating a supplier profile with contact and purchasing details.</td>
+                            <td colspan="10" class="table-empty">No suppliers added yet. Start by creating a supplier profile with contact and purchasing details.</td>
                         </tr>
                     @endforelse
                 </tbody>

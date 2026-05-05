@@ -1,9 +1,17 @@
 <x-app-layout pageTitle="Stock-In">
+    @php
+        $canCreateStockIn = $canCreateStockIn ?? ($blockingBatch === null);
+        $stockInActions = $canCreateStockIn
+            ? new \Illuminate\Support\HtmlString(
+                '<button class="btn btn-success px-4" type="button" data-bs-toggle="collapse" data-bs-target="#stockInCreatePanel" aria-expanded="false" aria-controls="stockInCreatePanel"><i class="bi bi-plus-lg me-2"></i>New Stock-In</button>')
+            : new \Illuminate\Support\HtmlString(
+                '<button class="btn btn-success px-4" type="button" disabled aria-disabled="true" title="Close or sell out the current batch before creating a new stock-in"><i class="bi bi-plus-lg me-2"></i>New Stock-In</button>');
+    @endphp
+
     @include('pos.partials.page-header', [
         'title' => 'Stock-In',
         'subtitle' => 'Record incoming inventory',
-        'actions' => new \Illuminate\Support\HtmlString(
-            '<button class="btn btn-success px-4" type="button" data-bs-toggle="collapse" data-bs-target="#stockInCreatePanel" aria-expanded="false" aria-controls="stockInCreatePanel"><i class="bi bi-plus-lg me-2"></i>New Stock-In</button>'),
+        'actions' => $stockInActions,
     ])
 
     @if (session('status'))
@@ -16,6 +24,13 @@
 
     @if ($errors->has('stock_in_create'))
         <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">{{ $errors->first('stock_in_create') }}</div>
+    @endif
+
+    @if (! $canCreateStockIn && $blockingBatch)
+        <div class="alert alert-warning rounded-4 border-0 shadow-sm mb-4">
+            <strong>Active Batch:</strong> Batch #{{ $blockingBatch->batch_id }} still has remaining quantity. 
+            Please finish selling out or mark it as Closed before creating another stock-in.
+        </div>
     @endif
 
     @php
@@ -42,7 +57,7 @@
         @endforeach
     </div>
 
-    <div class="collapse mb-4 {{ $errors->any() ? 'show' : '' }}" id="stockInCreatePanel">
+    <div class="collapse mb-4 {{ $canCreateStockIn && $errors->any() ? 'show' : '' }}" id="stockInCreatePanel">
         @component('pos.partials.panel-card', [
             'title' => 'Record Stock-In',
             'subtitle' => 'Capture delivery details and itemized incoming stock.',
@@ -186,6 +201,39 @@
             'title' => 'Stock-In Records',
             'subtitle' => 'Review recent inventory arrivals and trace each incoming batch.',
         ])
+        <form method="GET" action="{{ route('stock-ins.index') }}" class="row g-3 m-2">
+            <div class="col-12 col-md-5">
+                <label class="form-label fw-semibold">Search</label>
+                <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    value="{{ $filters['search'] }}"
+                    placeholder="Batch ID or supplier name"
+                >
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label fw-semibold">Source</label>
+                <select name="source_type" class="form-select">
+                    <option value="">All sources</option>
+                    <option value="Supplier" @selected($filters['source_type'] === 'Supplier')>Supplier</option>
+                    <option value="Own Livestock" @selected($filters['source_type'] === 'Own Livestock')>Own Livestock</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label fw-semibold">Batch Status</label>
+                <select name="batch_status" class="form-select">
+                    <option value="">All statuses</option>
+                    <option value="open" @selected($filters['batch_status'] === 'open')>Open</option>
+                    <option value="sold_out" @selected($filters['batch_status'] === 'sold_out')>Sold Out</option>
+                    <option value="closed" @selected($filters['batch_status'] === 'closed')>Closed</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-success w-100">Apply</button>
+                <a href="{{ route('stock-ins.index') }}" class="btn btn-light border w-100">Clear</a>
+            </div>
+        </form>
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
                 <thead>

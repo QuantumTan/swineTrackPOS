@@ -2,165 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BatchStatus;
 use App\Models\Batch;
 use App\Models\BatchItem;
+use App\Models\Category;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class PosController extends Controller
 {
-    public function dashboard(): View
-    {
-        $dailySalesSummary = $this->staticDailySalesSummary();
-        $lowStockProducts = $this->staticLowStockProducts();
-        $inventorySnapshot = $this->staticInventorySnapshot();
-        $batchDetails = $this->staticBatchDetails();
-        $triggerSummary = $this->staticTriggerSummary();
-
-        return view('dashboard', [
-            'summaryCards' => [
-                [
-                    'label' => 'Sales Summary',
-                    'value' => 'P155,480.00',
-                    'trend' => '4-day sales total',
-                    'icon' => 'bi-graph-up-arrow',
-                ],
-                [
-                    'label' => 'Low Stock',
-                    'value' => '4',
-                    'trend' => 'Products that need attention',
-                    'icon' => 'bi-exclamation-triangle',
-                ],
-                [
-                    'label' => 'Inventory Snapshot',
-                    'value' => '4',
-                    'trend' => 'Items shown in the stock preview',
-                    'icon' => 'bi-box-seam',
-                ],
-                [
-                    'label' => 'Starting Stock',
-                    'value' => '0 kg',
-                    'trend' => 'New products begin at zero stock',
-                    'icon' => 'bi-lightning-charge',
-                ],
-            ],
-            'viewTags' => [
-                'vw_product_inventory',
-                'vw_low_stock_products',
-                'vw_batch_details',
-                'vw_sales_details',
-                'vw_daily_sales_summary',
-            ],
-            'dailySalesSummary' => $dailySalesSummary,
-            'lowStockProducts' => $lowStockProducts,
-            'inventorySnapshot' => $inventorySnapshot,
-            'batchDetails' => $batchDetails,
-            'triggerSummary' => $triggerSummary,
-            'coverageItems' => $this->staticCoverageItems(),
-            'salesGraph' => [
-                [
-                    'label' => 'Apr 17',
-                    'total_sales' => 'P30,925.00',
-                    'transactions' => 14,
-                    'height' => 65,
-                ],
-                [
-                    'label' => 'Apr 18',
-                    'total_sales' => 'P34,480.00',
-                    'transactions' => 16,
-                    'height' => 73,
-                ],
-                [
-                    'label' => 'Apr 19',
-                    'total_sales' => 'P47,215.00',
-                    'transactions' => 21,
-                    'height' => 100,
-                ],
-                [
-                    'label' => 'Apr 20',
-                    'total_sales' => 'P42,860.00',
-                    'transactions' => 18,
-                    'height' => 91,
-                ],
-            ],
-            'inventoryStatusGraph' => [
-                [
-                    'label' => 'In Stock',
-                    'count' => 2,
-                    'width' => 50,
-                    'type' => 'success',
-                ],
-                [
-                    'label' => 'Low Stock',
-                    'count' => 1,
-                    'width' => 25,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Out of Stock',
-                    'count' => 1,
-                    'width' => 25,
-                    'type' => 'danger',
-                ],
-            ],
-            'batchCostGraph' => [
-                [
-                    'label' => 'Pork Belly (Liempo)',
-                    'value' => 'P3,690.00',
-                    'width' => 79,
-                    'type' => 'primary',
-                ],
-                [
-                    'label' => 'Ground Pork',
-                    'value' => 'P2,275.00',
-                    'width' => 49,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Chop',
-                    'value' => 'P4,656.00',
-                    'width' => 100,
-                    'type' => 'success',
-                ],
-            ],
-            'lowStockGraph' => [
-                [
-                    'label' => 'Ground Pork',
-                    'value' => '8.500 kg',
-                    'width' => 87,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Ribs',
-                    'value' => '4.250 kg',
-                    'width' => 44,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Shoulder (Kasim)',
-                    'value' => '0.000 kg',
-                    'width' => 8,
-                    'type' => 'danger',
-                ],
-                [
-                    'label' => 'Pork Loin',
-                    'value' => '9.750 kg',
-                    'width' => 98,
-                    'type' => 'warning',
-                ],
-            ],
-        ]);
-    }
-
     public function sales(): View
     {
         $catalogItems = Product::query()
             ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock_kg as current_stock', 'inventory.last_updated_at')
             ->orderBy('product.product_name')
             ->get();
 
@@ -211,16 +72,12 @@ class PosController extends Controller
                 ->with('error', $stockError);
         }
 
-        $batch = Batch::query()
-            ->whereIn('batch_status', ['Open', 'Sold Out'])
-            ->latest('batch_date')
-            ->latest('batch_id')
-            ->first();
+        $batch = $this->findBatchForSale($items);
 
         if (! $batch) {
             return back()
                 ->withInput()
-                ->with('error', 'Please create a stock-in batch before completing POS sales.');
+                ->with('error', 'No stock-in batch has enough remaining quantity for every cart item.');
         }
 
         try {
@@ -241,7 +98,7 @@ class PosController extends Controller
 
                 foreach ($items as $item) {
                     $product = $products->get($item['product_id']);
-                    $stock = (float) ($inventory->get($item['product_id'])?->current_stock ?? 0);
+                    $stock = (float) ($inventory->get($item['product_id'])?->current_stock_kg ?? 0);
 
                     if (! $product || $stock < $item['qty_sold_kg']) {
                         throw new \RuntimeException('Insufficient stock for one or more cart items.');
@@ -268,6 +125,8 @@ class PosController extends Controller
                             throw new \RuntimeException('Insufficient batch stock for one or more cart items.');
                         }
                     }
+
+                    $this->syncBatchStatusFromItems($batch->batch_id);
                 }
 
                 $saleId = DB::table('sale')->insertGetId([
@@ -282,9 +141,9 @@ class PosController extends Controller
                     if (! $saleItemInsertDeductsInventory) {
                         $updated = DB::table('inventory')
                             ->where('product_id', $item['product_id'])
-                            ->where('current_stock', '>=', $item['qty_sold_kg'])
+                            ->where('current_stock_kg', '>=', $item['qty_sold_kg'])
                             ->update([
-                                'current_stock' => DB::raw('current_stock - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
+                                'current_stock_kg' => DB::raw('current_stock_kg - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
                                 'last_updated_at' => now(),
                             ]);
 
@@ -323,14 +182,14 @@ class PosController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     * @param  Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
      */
     private function firstInsufficientStockError($items): ?string
     {
         $products = Product::query()
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
             ->whereIn('product.product_id', $items->pluck('product_id'))
-            ->select('product.product_id', 'product.product_name', 'inventory.current_stock')
+            ->select('product.product_id', 'product.product_name', 'inventory.current_stock_kg as current_stock')
             ->get()
             ->keyBy('product_id');
 
@@ -352,6 +211,26 @@ class PosController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @param  Collection<int, array{product_id: int, qty_sold_kg: float}>  $items
+     */
+    private function findBatchForSale($items): ?Batch
+    {
+        $query = Batch::query();
+
+        foreach ($items as $item) {
+            $query->whereHas('items', fn ($batchItems) => $batchItems
+                ->where('product_id', $item['product_id'])
+                ->where('qty_in_kg', '>=', $item['qty_sold_kg']));
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN batch_status = 'Closed' THEN 1 ELSE 0 END")
+            ->latest('batch_date')
+            ->latest('batch_id')
+            ->first();
     }
 
     private function saleItemInsertDeductsInventory(): bool
@@ -377,6 +256,36 @@ class PosController extends Controller
             ->where('TRIGGER_NAME', 'trg_sale_item_after_insert')
             ->where('ACTION_STATEMENT', 'like', '%batch_item%')
             ->exists();
+    }
+
+    private function syncBatchStatusFromItems(int $batchId): void
+    {
+        $batch = Batch::query()
+            ->whereKey($batchId)
+            ->first();
+
+        if (! $batch || $batch->batch_status === BatchStatus::Closed) {
+            return;
+        }
+
+        $hasItems = BatchItem::query()
+            ->where('batch_id', $batchId)
+            ->exists();
+
+        if (! $hasItems) {
+            return;
+        }
+
+        $hasRemainingQuantity = BatchItem::query()
+            ->where('batch_id', $batchId)
+            ->where('qty_in_kg', '>', 0)
+            ->exists();
+
+        $batch->forceFill([
+            'batch_status' => $hasRemainingQuantity
+                ? BatchStatus::Open->value
+                : BatchStatus::SoldOut->value,
+        ])->save();
     }
 
     /**
@@ -408,7 +317,7 @@ class PosController extends Controller
 
         return [
             'sale_id' => $saleId,
-            'sale_date' => optional($sale?->sale_date ? \Carbon\Carbon::parse($sale->sale_date) : null)->format('M d, Y h:i A'),
+            'sale_date' => optional($sale?->sale_date ? Carbon::parse($sale->sale_date) : null)->format('M d, Y h:i A'),
             'batch_id' => $sale?->batch_id,
             'cashier' => $sale?->user_email,
             'items' => $items->map(fn (object $item): array => [
@@ -453,8 +362,14 @@ class PosController extends Controller
         ]);
     }
 
-    public function inventory(): View
+    public function inventory(Request $request): View
     {
+        $filters = [
+            'search' => trim((string) $request->query('search', '')),
+            'category_id' => (string) $request->query('category_id', ''),
+            'stock_status' => (string) $request->query('stock_status', ''),
+        ];
+
         $latestSupplierSubquery = BatchItem::query()
             ->join('batch', 'batch.batch_id', '=', 'batch_item.batch_id')
             ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batch.supplier_id')
@@ -472,19 +387,51 @@ class PosController extends Controller
         $inventoryRows = Product::query()
             ->with('category')
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.*', 'inventory.current_stock', 'inventory.last_updated_at')
+            ->select('product.*', 'inventory.current_stock_kg as current_stock', 'inventory.last_updated_at')
             ->selectSub($latestSupplierSubquery, 'latest_supplier')
+            ->when($filters['search'] !== '', function ($query) use ($filters) {
+                $query->where(function ($searchQuery) use ($filters) {
+                    $searchQuery
+                        ->where('product.product_name', 'like', '%'.$filters['search'].'%')
+                        ->orWhere('product.product_id', (int) $filters['search'])
+                        ->orWhereExists(function ($supplierQuery) use ($filters) {
+                            $supplierQuery
+                                ->select(DB::raw(1))
+                                ->from('batch_item')
+                                ->join('batch', 'batch.batch_id', '=', 'batch_item.batch_id')
+                                ->leftJoin('supplier', 'supplier.supplier_id', '=', 'batch.supplier_id')
+                                ->whereColumn('batch_item.product_id', 'product.product_id')
+                                ->where('supplier.supplier_name', 'like', '%'.$filters['search'].'%');
+                        });
+                });
+            })
+            ->when($filters['category_id'] !== '', fn ($query) => $query->where('product.category_id', $filters['category_id']))
+            ->when($filters['stock_status'] !== '', function ($query) use ($filters) {
+                if ($filters['stock_status'] === 'in_stock') {
+                    $query->where('inventory.current_stock_kg', '>=', Product::LOW_STOCK_THRESHOLD);
+                } elseif ($filters['stock_status'] === 'low_stock') {
+                    $query->where('inventory.current_stock_kg', '>', 0)
+                        ->where('inventory.current_stock_kg', '<', Product::LOW_STOCK_THRESHOLD);
+                } elseif ($filters['stock_status'] === 'out_of_stock') {
+                    $query->where(function ($stockQuery) {
+                        $stockQuery->whereNull('inventory.current_stock_kg')
+                            ->orWhere('inventory.current_stock_kg', '<=', 0);
+                    });
+                }
+            })
             ->orderBy('product.product_id')
             ->paginate(10)
             ->withQueryString();
 
         $allInventoryRows = Product::query()
             ->leftJoin('inventory', 'inventory.product_id', '=', 'product.product_id')
-            ->select('product.product_id', 'inventory.current_stock')
+            ->select('product.product_id', 'inventory.current_stock_kg as current_stock')
             ->get();
 
         return view('pos.inventory', [
             'inventoryItems' => $inventoryRows,
+            'filters' => $filters,
+            'categories' => Category::query()->orderBy('category_name')->get(),
             'summary' => [
                 [
                     'label' => 'Total Products',
@@ -502,440 +449,5 @@ class PosController extends Controller
                 ],
             ],
         ]);
-    }
-
-    public function reports(): View
-    {
-        $dailySalesSummary = $this->staticDailySalesSummary();
-        $lowStockProducts = $this->staticLowStockProducts();
-        $batchDetails = $this->staticBatchDetails();
-        $salesDetails = $this->staticSalesDetails();
-        $inventorySnapshot = $this->staticInventorySnapshot();
-
-        return view('pos.reports', [
-            'summaryCards' => [
-                [
-                    'label' => 'Sales Summary',
-                    'value' => 'P155,480.00',
-                    'trend' => 'Combined sales across the sample days',
-                    'icon' => 'bi-file-earmark-bar-graph',
-                ],
-                [
-                    'label' => 'Low Stock',
-                    'value' => '4',
-                    'trend' => 'Products currently at or below the warning level',
-                    'icon' => 'bi-bell',
-                ],
-                [
-                    'label' => 'Batch Costs',
-                    'value' => 'P10,621.00',
-                    'trend' => 'Total sample intake cost shown below',
-                    'icon' => 'bi-clipboard-data',
-                ],
-                [
-                    'label' => 'Starting Stock',
-                    'value' => '0 kg',
-                    'trend' => 'New products begin at zero stock',
-                    'icon' => 'bi-lightning-charge',
-                ],
-            ],
-            'viewTags' => [
-                'vw_daily_sales_summary',
-                'vw_low_stock_products',
-                'vw_product_inventory',
-                'vw_batch_details',
-                'vw_sales_details',
-            ],
-            'dailySalesSummary' => $dailySalesSummary,
-            'lowStockProducts' => $lowStockProducts,
-            'batchDetails' => $batchDetails,
-            'salesDetails' => $salesDetails,
-            'inventorySnapshot' => $inventorySnapshot,
-            'coverageItems' => $this->staticCoverageItems(),
-            'triggerSummary' => $this->staticTriggerSummary(),
-            'salesGraph' => [
-                [
-                    'label' => 'Apr 17',
-                    'total_sales' => 'P30,925.00',
-                    'transactions' => 14,
-                    'height' => 65,
-                ],
-                [
-                    'label' => 'Apr 18',
-                    'total_sales' => 'P34,480.00',
-                    'transactions' => 16,
-                    'height' => 73,
-                ],
-                [
-                    'label' => 'Apr 19',
-                    'total_sales' => 'P47,215.00',
-                    'transactions' => 21,
-                    'height' => 100,
-                ],
-                [
-                    'label' => 'Apr 20',
-                    'total_sales' => 'P42,860.00',
-                    'transactions' => 18,
-                    'height' => 91,
-                ],
-            ],
-            'lowStockGraph' => [
-                [
-                    'label' => 'Ground Pork',
-                    'value' => '8.500 kg',
-                    'width' => 87,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Ribs',
-                    'value' => '4.250 kg',
-                    'width' => 44,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Shoulder (Kasim)',
-                    'value' => '0.000 kg',
-                    'width' => 8,
-                    'type' => 'danger',
-                ],
-                [
-                    'label' => 'Pork Loin',
-                    'value' => '9.750 kg',
-                    'width' => 98,
-                    'type' => 'warning',
-                ],
-            ],
-            'inventoryGraph' => [
-                [
-                    'label' => 'Pork Chop',
-                    'value' => '28.000 kg',
-                    'width' => 100,
-                    'type' => 'success',
-                ],
-                [
-                    'label' => 'Pork Belly (Liempo)',
-                    'value' => '16.500 kg',
-                    'width' => 59,
-                    'type' => 'success',
-                ],
-                [
-                    'label' => 'Ground Pork',
-                    'value' => '8.500 kg',
-                    'width' => 30,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Shoulder (Kasim)',
-                    'value' => '0.000 kg',
-                    'width' => 6,
-                    'type' => 'danger',
-                ],
-            ],
-            'batchCostGraph' => [
-                [
-                    'label' => 'Pork Belly (Liempo)',
-                    'value' => 'P3,690.00',
-                    'width' => 79,
-                    'type' => 'primary',
-                ],
-                [
-                    'label' => 'Ground Pork',
-                    'value' => 'P2,275.00',
-                    'width' => 49,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Chop',
-                    'value' => 'P4,656.00',
-                    'width' => 100,
-                    'type' => 'success',
-                ],
-            ],
-            'salesMixGraph' => [
-                [
-                    'label' => 'Pork Belly (Liempo)',
-                    'value' => 'P1,567.50',
-                    'width' => 100,
-                    'type' => 'primary',
-                ],
-                [
-                    'label' => 'Ground Pork',
-                    'value' => 'P446.25',
-                    'width' => 29,
-                    'type' => 'warning',
-                ],
-                [
-                    'label' => 'Pork Chop',
-                    'value' => 'P630.00',
-                    'width' => 40,
-                    'type' => 'success',
-                ],
-            ],
-        ]);
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function staticCoverageItems(): array
-    {
-        return [
-            [
-                'kind' => 'View',
-                'name' => 'vw_product_inventory',
-                'description' => 'Inventory display for products, stock, price per kilo, update time, and computed stock status.',
-                'detail' => 'product_id, product_name, category_name, product_price_per_kilo, current_stock, last_updated_at, stock_status',
-            ],
-            [
-                'kind' => 'View',
-                'name' => 'vw_batch_details',
-                'description' => 'Batch intake lines covering source, supplier, operator, quantities, and total cost.',
-                'detail' => 'batch_id, batch_date, source_type, batch_status, supplier_name, user_email, batch_item_id, product_name, qty_in_kg, cost_per_kg, line_total_cost',
-            ],
-            [
-                'kind' => 'View',
-                'name' => 'vw_sales_details',
-                'description' => 'Sale line ledger for cashier, batch, product, sold quantity, price, and line total.',
-                'detail' => 'sale_id, sale_date, batch_id, user_email, sale_item_id, product_name, qty_sold_kg, price_per_kg, line_total',
-            ],
-            [
-                'kind' => 'View',
-                'name' => 'vw_daily_sales_summary',
-                'description' => 'Day-level total transactions and total sales used for the sales trend graphs.',
-                'detail' => 'sale_day, total_transactions, total_sales',
-            ],
-            [
-                'kind' => 'View',
-                'name' => 'vw_low_stock_products',
-                'description' => 'Products at or below the low-stock threshold for watchlists and reorder prompts.',
-                'detail' => 'product_id, product_name, current_stock',
-            ],
-            [
-                'kind' => 'Trigger',
-                'name' => 'trg_product_after_insert',
-                'description' => 'Creates the starting inventory row the moment a product is inserted.',
-                'detail' => 'AFTER INSERT ON product -> inventory(product_id, current_stock = 0, last_updated_at = NOW())',
-            ],
-        ];
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function staticDailySalesSummary(): array
-    {
-        return [
-            [
-                'sale_day' => '20 Apr 2026',
-                'total_transactions' => 18,
-                'total_sales' => 'P42,860.00',
-            ],
-            [
-                'sale_day' => '19 Apr 2026',
-                'total_transactions' => 21,
-                'total_sales' => 'P47,215.00',
-            ],
-            [
-                'sale_day' => '18 Apr 2026',
-                'total_transactions' => 16,
-                'total_sales' => 'P34,480.00',
-            ],
-            [
-                'sale_day' => '17 Apr 2026',
-                'total_transactions' => 14,
-                'total_sales' => 'P30,925.00',
-            ],
-        ];
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function staticLowStockProducts(): array
-    {
-        return [
-            [
-                'product_id' => 'P003',
-                'product_name' => 'Ground Pork',
-                'current_stock' => '8.500 kg',
-                'status' => ['label' => 'Low Stock', 'class' => 'warning'],
-            ],
-            [
-                'product_id' => 'P004',
-                'product_name' => 'Pork Ribs',
-                'current_stock' => '4.250 kg',
-                'status' => ['label' => 'Low Stock', 'class' => 'warning'],
-            ],
-            [
-                'product_id' => 'P005',
-                'product_name' => 'Pork Shoulder (Kasim)',
-                'current_stock' => '0.000 kg',
-                'status' => ['label' => 'Out of Stock', 'class' => 'danger'],
-            ],
-            [
-                'product_id' => 'P006',
-                'product_name' => 'Pork Loin',
-                'current_stock' => '9.750 kg',
-                'status' => ['label' => 'Low Stock', 'class' => 'warning'],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function staticInventorySnapshot(): array
-    {
-        return [
-            [
-                'product_id' => 'P001',
-                'product_name' => 'Pork Chop',
-                'category_name' => 'Premium Cuts',
-                'product_price_per_kilo' => 'P315.00',
-                'current_stock' => '28.000 kg',
-                'last_updated_at' => '20 Apr 2026, 06:30 AM',
-                'stock_status' => ['label' => 'In Stock', 'class' => 'success'],
-            ],
-            [
-                'product_id' => 'P002',
-                'product_name' => 'Pork Belly (Liempo)',
-                'category_name' => 'Premium Cuts',
-                'product_price_per_kilo' => 'P330.00',
-                'current_stock' => '16.500 kg',
-                'last_updated_at' => '20 Apr 2026, 06:15 AM',
-                'stock_status' => ['label' => 'In Stock', 'class' => 'success'],
-            ],
-            [
-                'product_id' => 'P003',
-                'product_name' => 'Ground Pork',
-                'category_name' => 'Ground Meat',
-                'product_price_per_kilo' => 'P255.00',
-                'current_stock' => '8.500 kg',
-                'last_updated_at' => '20 Apr 2026, 05:55 AM',
-                'stock_status' => ['label' => 'Low Stock', 'class' => 'warning'],
-            ],
-            [
-                'product_id' => 'P005',
-                'product_name' => 'Pork Shoulder (Kasim)',
-                'category_name' => 'Standard Cuts',
-                'product_price_per_kilo' => 'P285.00',
-                'current_stock' => '0.000 kg',
-                'last_updated_at' => '20 Apr 2026, 05:40 AM',
-                'stock_status' => ['label' => 'Out of Stock', 'class' => 'danger'],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function staticBatchDetails(): array
-    {
-        return [
-            [
-                'batch_id' => 'B018',
-                'batch_date' => '20 Apr 2026, 04:30 AM',
-                'source_type' => 'Supplier',
-                'batch_status' => ['label' => 'Open', 'class' => 'primary'],
-                'supplier_name' => 'Metro Cuts Trading',
-                'user_email' => 'cashier@swine-track.test',
-                'batch_item_id' => 'BI053',
-                'product_name' => 'Pork Belly (Liempo)',
-                'qty_in_kg' => '18.000 kg',
-                'cost_per_kg' => 'P205.00',
-                'line_total_cost' => 'P3,690.00',
-            ],
-            [
-                'batch_id' => 'B018',
-                'batch_date' => '20 Apr 2026, 04:30 AM',
-                'source_type' => 'Supplier',
-                'batch_status' => ['label' => 'Open', 'class' => 'primary'],
-                'supplier_name' => 'Metro Cuts Trading',
-                'user_email' => 'cashier@swine-track.test',
-                'batch_item_id' => 'BI054',
-                'product_name' => 'Ground Pork',
-                'qty_in_kg' => '12.500 kg',
-                'cost_per_kg' => 'P182.00',
-                'line_total_cost' => 'P2,275.00',
-            ],
-            [
-                'batch_id' => 'B017',
-                'batch_date' => '19 Apr 2026, 05:10 AM',
-                'source_type' => 'Own Livestock',
-                'batch_status' => ['label' => 'Closed', 'class' => 'neutral'],
-                'supplier_name' => 'Own Livestock',
-                'user_email' => 'admin@swine-track.test',
-                'batch_item_id' => 'BI052',
-                'product_name' => 'Pork Chop',
-                'qty_in_kg' => '24.000 kg',
-                'cost_per_kg' => 'P194.00',
-                'line_total_cost' => 'P4,656.00',
-            ],
-        ];
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function staticSalesDetails(): array
-    {
-        return [
-            [
-                'sale_id' => 'S041',
-                'sale_date' => '20 Apr 2026, 09:15 AM',
-                'batch_id' => 'B018',
-                'user_email' => 'cashier@swine-track.test',
-                'sale_item_id' => 'SI118',
-                'product_name' => 'Pork Belly (Liempo)',
-                'qty_sold_kg' => '3.250 kg',
-                'price_per_kg' => 'P330.00',
-                'line_total' => 'P1,072.50',
-            ],
-            [
-                'sale_id' => 'S042',
-                'sale_date' => '20 Apr 2026, 09:42 AM',
-                'batch_id' => 'B018',
-                'user_email' => 'cashier@swine-track.test',
-                'sale_item_id' => 'SI119',
-                'product_name' => 'Ground Pork',
-                'qty_sold_kg' => '1.750 kg',
-                'price_per_kg' => 'P255.00',
-                'line_total' => 'P446.25',
-            ],
-            [
-                'sale_id' => 'S043',
-                'sale_date' => '20 Apr 2026, 10:05 AM',
-                'batch_id' => 'B017',
-                'user_email' => 'cashier@swine-track.test',
-                'sale_item_id' => 'SI120',
-                'product_name' => 'Pork Chop',
-                'qty_sold_kg' => '2.000 kg',
-                'price_per_kg' => 'P315.00',
-                'line_total' => 'P630.00',
-            ],
-            [
-                'sale_id' => 'S044',
-                'sale_date' => '20 Apr 2026, 10:22 AM',
-                'batch_id' => 'B018',
-                'user_email' => 'assistant@swine-track.test',
-                'sale_item_id' => 'SI121',
-                'product_name' => 'Pork Belly (Liempo)',
-                'qty_sold_kg' => '1.500 kg',
-                'price_per_kg' => 'P330.00',
-                'line_total' => 'P495.00',
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function staticTriggerSummary(): array
-    {
-        return [
-            'name' => 'trg_product_after_insert',
-            'title' => 'Inventory row auto-setup',
-            'description' => 'Every new product immediately gets an inventory record with zero stock and the current timestamp.',
-        ];
     }
 }

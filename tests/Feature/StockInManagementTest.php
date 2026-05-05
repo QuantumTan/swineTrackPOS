@@ -7,12 +7,20 @@ use App\Models\Category;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\Supplier;
+use App\Models\Category;
 use App\Models\User;
 
+<<<<<<< HEAD
 function makeStockInProduct(string $name, float $price, string $categoryName = 'Test Category'): Product
 {
     $category = Category::create([
         'category_name' => $categoryName,
+=======
+function makeStockInProduct(string $name, float $price): Product
+{
+    $category = Category::create([
+        'category_name' => 'Stock-In Test Category',
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
         'category_description' => 'Test fixture category',
     ]);
 
@@ -29,7 +37,11 @@ test('new stock-in records inventory without requiring a status field', function
         'supplier_name' => 'Central Farm Supply',
         'supplier_phone_number' => '09171234567',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Ham', 300.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $response = $this
         ->actingAs($user)
@@ -68,7 +80,11 @@ test('cannot create a new stock-in while another batch remains open', function (
         'supplier_name' => 'Central Farm Supply',
         'supplier_phone_number' => '09171234567',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Ham', 300.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -120,13 +136,52 @@ test('cannot create a new stock-in while another batch remains open', function (
         ->and((float) Inventory::query()->first()->current_stock_kg)->toBe(0.0);
 });
 
+test('stock-in page disables the new stock-in button while a live batch still has stock', function () {
+    $user = User::factory()->create();
+    $supplier = Supplier::create([
+        'supplier_name' => 'Central Farm Supply',
+        'supplier_phone_number' => '09171234567',
+    ]);
+    $product = makeStockInProduct('Pork Ham', 300.00);
+
+    $openBatch = Batch::create([
+        'supplier_id' => $supplier->supplier_id,
+        'user_id' => $user->user_id,
+        'batch_date' => now()->subDay(),
+        'source_type' => 'Supplier',
+        'batch_status' => 'Open',
+    ]);
+
+    BatchItem::create([
+        'batch_id' => $openBatch->batch_id,
+        'product_id' => $product->product_id,
+        'qty_in_kg' => 1.500,
+        'cost_per_kg' => 210.00,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('stock-ins.index'));
+
+    $response->assertOk();
+    $response->assertSee('New Stock-In', false);
+    $response->assertSee('disabled aria-disabled="true"', false);
+    $response->assertSee('Batch #'.$openBatch->batch_id.' still has remaining quantity', false);
+    $response->assertSee('Please finish selling out or mark it as Closed before creating another stock-in.', false);
+    $response->assertDontSee('data-bs-toggle="collapse" data-bs-target="#stockInCreatePanel"', false);
+});
+
 test('can create a new stock-in after prior batches are terminal', function () {
     $user = User::factory()->create();
     $supplier = Supplier::create([
         'supplier_name' => 'Central Farm Supply',
         'supplier_phone_number' => '09171234567',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Ham', 300.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -165,7 +220,11 @@ test('stock-in page shows batch status and exposes it on edit', function () {
         'supplier_name' => 'South Valley Foods',
         'supplier_phone_number' => '09170000000',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Ground Pork', 240.00, 'Ground Meat');
+=======
+    $product = makeStockInProduct('Ground Pork', 240.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $batch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -200,7 +259,11 @@ test('updating a stock-in record can change its manual status to closed', functi
         'supplier_name' => 'West Farm Supply',
         'supplier_phone_number' => '09173334444',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Kasim', 275.00, 'Standard Cuts');
+=======
+    $product = makeStockInProduct('Pork Kasim', 275.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $batch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -246,7 +309,11 @@ test('cannot mark a batch open while another batch is already open', function ()
         'supplier_name' => 'East Farm Supply',
         'supplier_phone_number' => '09174445555',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Belly', 320.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Belly', 320.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $openBatch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -310,7 +377,11 @@ test('zero-quantity batches are shown as sold out automatically', function () {
         'supplier_name' => 'Delta Farm Supply',
         'supplier_phone_number' => '09178889999',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Loin', 310.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Loin', 310.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $batch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -342,7 +413,11 @@ test('sold-out batches no longer block creating a new stock-in', function () {
         'supplier_name' => 'Harvest Farm Supply',
         'supplier_phone_number' => '09179990000',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Chop', 305.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Chop', 305.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $soldOutBatch = Batch::create([
         'supplier_id' => $supplier->supplier_id,
@@ -388,8 +463,13 @@ test('updating a stock-in record recalculates inventory by product delta', funct
         'supplier_name' => 'North Ridge Meats',
         'supplier_phone_number' => '09175557777',
     ]);
+<<<<<<< HEAD
     $productA = makeStockInProduct('Pork Belly', 320.00, 'Premium Cuts');
     $productB = makeStockInProduct('Ground Pork', 250.00, 'Ground Meat');
+=======
+    $productA = makeStockInProduct('Pork Belly', 320.00);
+    $productB = makeStockInProduct('Ground Pork', 250.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $productA->inventory()->update([
         'current_stock_kg' => 10.000,
@@ -451,7 +531,11 @@ test('deleting a stock-in record removes its quantities from inventory', functio
         'supplier_name' => 'Metro Cuts Trading',
         'supplier_phone_number' => '09176668888',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Shoulder', 280.00, 'Standard Cuts');
+=======
+    $product = makeStockInProduct('Pork Shoulder', 280.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $product->inventory()->update([
         'current_stock_kg' => 6.000,
@@ -493,7 +577,11 @@ test('deleting a stock-in record removes its quantities from inventory', functio
 
 test('supplier source stock-in requires a supplier link', function () {
     $user = User::factory()->create();
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Ham', 300.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $response = $this
         ->from(route('stock-ins.index'))
@@ -545,7 +633,11 @@ test('cannot create stock-in with an inactive supplier', function () {
         'supplier_name' => 'Inactive Farm Supply',
         'supplier_status' => 'Inactive',
     ]);
+<<<<<<< HEAD
     $product = makeStockInProduct('Pork Ham', 300.00, 'Premium Cuts');
+=======
+    $product = makeStockInProduct('Pork Ham', 300.00);
+>>>>>>> 707982348046606cf8e74071dcfc512eac0675bc
 
     $response = $this
         ->from(route('stock-ins.index'))
@@ -569,3 +661,48 @@ test('cannot create stock-in with an inactive supplier', function () {
 
     expect(Batch::query()->count())->toBe(0);
 });
+
+test('stock-in button re-enables when all batch items are sold to zero quantity', function () {
+    $user = User::factory()->create();
+    $supplier = Supplier::create([
+        'supplier_name' => 'Fresh Meat Supply',
+        'supplier_phone_number' => '09181234567',
+    ]);
+    $product = makeStockInProduct('Pork Belly', 280.00);
+
+    // Create a batch with some stock
+    $batch = Batch::create([
+        'supplier_id' => $supplier->supplier_id,
+        'user_id' => $user->user_id,
+        'batch_date' => now()->subDay(),
+        'source_type' => 'Supplier',
+        'batch_status' => 'Open',
+    ]);
+
+    $batchItem = BatchItem::create([
+        'batch_id' => $batch->batch_id,
+        'product_id' => $product->product_id,
+        'qty_in_kg' => 5.0,
+        'cost_per_kg' => 200.00,
+    ]);
+
+    // Verify button is initially disabled
+    $response = $this
+        ->actingAs($user)
+        ->get(route('stock-ins.index'));
+
+    $response->assertSee('disabled aria-disabled="true"', false);
+    $response->assertSee('Batch #'.$batch->batch_id.' still has remaining quantity', false);
+
+    // Simulate selling all the stock by setting qty_in_kg to 0
+    $batchItem->update(['qty_in_kg' => 0]);
+
+    // Verify button is now enabled
+    $response = $this
+        ->actingAs($user)
+        ->get(route('stock-ins.index'));
+
+    $response->assertDontSee('disabled aria-disabled="true"', false);
+    $response->assertDontSee('Batch #'.$batch->batch_id, false);
+});
+

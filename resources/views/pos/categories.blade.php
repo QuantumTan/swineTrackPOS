@@ -89,6 +89,31 @@
             'subtitle' => 'Categories are referenced by products and used throughout catalog, stock, and sales views.',
         ])
 
+        <form method="GET" action="{{ route('categories.index') }}" class="row g-3 m-2">
+            <div class="col-12 col-md-7">
+                <label class="form-label fw-semibold">Search</label>
+                <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    value="{{ $filters['search'] }}"
+                    placeholder="Category name, description, or ID"
+                >
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label fw-semibold">Usage</label>
+                <select name="usage" class="form-select">
+                    <option value="">All categories</option>
+                    <option value="with_products" @selected($filters['usage'] === 'with_products')>With Products</option>
+                    <option value="empty" @selected($filters['usage'] === 'empty')>Empty</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-success w-100">Apply</button>
+                <a href="{{ route('categories.index') }}" class="btn btn-light border w-100">Clear</a>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
                 <thead>
