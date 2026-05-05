@@ -282,6 +282,22 @@ BEGIN
         AND batch_item.product_id = NEW.product_id;
 END
 SQL);
+
+        DB::unprepared(<<<'SQL'
+CREATE TRIGGER trg_supplier_before_delete
+BEFORE DELETE ON supplier
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM batch
+        WHERE supplier_id = OLD.supplier_id
+        AND batch_status IN ('Open', 'Pending')
+    ) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Cannot delete supplier with active batches';
+    END IF;
+END
+SQL);
     }
 
     private function installProcedures(): void
