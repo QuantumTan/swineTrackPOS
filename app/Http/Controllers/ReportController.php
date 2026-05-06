@@ -8,17 +8,31 @@ use Illuminate\View\View;
 
 class ReportController extends Controller
 {
-    public function __construct(private readonly ReportDataService $reports)
-    {
-    }
+    public function __construct(private readonly ReportDataService $reports) {}
 
     public function index(Request $request): View
     {
+        $filters = $request->validate([
+            'type' => ['nullable', 'in:daily,weekly,monthly,yearly'],
+            'daily_date_from' => ['nullable', 'date'],
+            'daily_date_to' => ['nullable', 'date', 'after_or_equal:daily_date_from'],
+            'product_search' => ['nullable', 'string', 'max:100'],
+            'product_category' => ['nullable', 'string', 'max:100'],
+        ]);
+
         $reportType = $request->string('type')->toString() ?: 'monthly';
         $reportType = in_array($reportType, ['daily', 'weekly', 'monthly', 'yearly'], true) ? $reportType : 'monthly';
+        $filters = [
+            'daily_date_from' => $filters['daily_date_from'] ?? '',
+            'daily_date_to' => $filters['daily_date_to'] ?? '',
+            'product_search' => trim((string) ($filters['product_search'] ?? '')),
+            'product_category' => trim((string) ($filters['product_category'] ?? '')),
+        ];
         $period = $this->reports->periodFor($reportType);
         $salesTrend = $this->reports->salesTrendForPeriod($reportType);
         $productSalesSummary = $this->reports->productSalesSummary($reportType);
+        $paginatedDailySalesSummary = $this->reports->paginatedDailySalesSummary($reportType, 10, $filters);
+        $paginatedProductSalesSummary = $this->reports->paginatedProductSalesSummary($reportType, 10, $filters);
         $categorySalesSummary = $this->reports->categorySalesSummary($reportType);
 
         $totalSales = collect($productSalesSummary)->sum(fn (array $row): float => $row['revenue_value']);
@@ -71,10 +85,13 @@ class ReportController extends Controller
                 'yearly' => 'Yearly',
             ],
             'salesTrend' => $this->reports->salesGraph($salesTrend),
+            'dailySalesSummary' => $paginatedDailySalesSummary,
             'topProductsGraph' => $this->reports->topProductsGraph($productSalesSummary),
             'categorySalesDonut' => $this->reports->categorySalesDonut($categorySalesSummary),
-            'productSalesSummary' => $productSalesSummary,
+            'productSalesSummary' => $paginatedProductSalesSummary,
             'categorySalesSummary' => $categorySalesSummary,
+            'productSalesCategories' => $this->reports->productSalesCategories($reportType),
+            'filters' => $filters,
         ]);
     }
 }

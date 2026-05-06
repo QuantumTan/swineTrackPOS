@@ -9,6 +9,11 @@
 
     <section class="content-card report-filter-card mb-4">
         <form method="GET" action="{{ route('reports.index') }}" class="report-filter-form">
+            <input type="hidden" name="daily_date_from" value="{{ $filters['daily_date_from'] }}">
+            <input type="hidden" name="daily_date_to" value="{{ $filters['daily_date_to'] }}">
+            <input type="hidden" name="product_search" value="{{ $filters['product_search'] }}">
+            <input type="hidden" name="product_category" value="{{ $filters['product_category'] }}">
+
             <div>
                 <h3 class="section-title mb-3">Report Filters</h3>
                 <label class="form-label fw-semibold" for="report-type">Report Type</label>
@@ -126,9 +131,102 @@
 
     <section class="content-card mb-4">
         <div class="card-header-clean">
+            <h3 class="section-title mb-0">Daily Sales Summary</h3>
+            <div class="section-subtitle mt-2">Daily transaction totals for the selected report period.</div>
+        </div>
+
+        <form method="GET" action="{{ route('reports.index') }}" class="row g-3 m-2">
+            <input type="hidden" name="type" value="{{ $reportMeta['type'] }}">
+            <input type="hidden" name="product_search" value="{{ $filters['product_search'] }}">
+            <input type="hidden" name="product_category" value="{{ $filters['product_category'] }}">
+
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold">From</label>
+                <input name="daily_date_from" type="date" class="form-control" value="{{ $filters['daily_date_from'] }}">
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold">To</label>
+                <input name="daily_date_to" type="date" class="form-control" value="{{ $filters['daily_date_to'] }}">
+            </div>
+            <div class="col-12 col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-success w-100">Apply</button>
+                <a href="{{ route('reports.index', [
+                    'type' => $reportMeta['type'],
+                    'product_search' => $filters['product_search'],
+                    'product_category' => $filters['product_category'],
+                ]) }}" class="btn btn-light border w-100">Clear</a>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table app-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Sale Day</th>
+                        <th>Total Transactions</th>
+                        <th>Total Sales</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($dailySalesSummary as $row)
+                        <tr>
+                            <td class="fw-semibold">{{ $row['label'] }}</td>
+                            <td>{{ $row['transactions'] }} transaction(s)</td>
+                            <td class="fw-semibold report-revenue-text">{{ $row['total_sales'] }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td class="text-center text-secondary py-4" colspan="3">No daily sales summary rows for this period.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="p-3">
+            {{ $dailySalesSummary->links('pagination::bootstrap-5') }}
+        </div>
+    </section>
+
+    <section class="content-card mb-4">
+        <div class="card-header-clean">
             <h3 class="section-title mb-0">Product Sales Summary</h3>
             <div class="section-subtitle mt-2">Aggregated by product for the selected report period.</div>
         </div>
+
+        <form method="GET" action="{{ route('reports.index') }}" class="row g-3 m-2">
+            <input type="hidden" name="type" value="{{ $reportMeta['type'] }}">
+            <input type="hidden" name="daily_date_from" value="{{ $filters['daily_date_from'] }}">
+            <input type="hidden" name="daily_date_to" value="{{ $filters['daily_date_to'] }}">
+
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold">Search</label>
+                <input
+                    type="text"
+                    name="product_search"
+                    class="form-control"
+                    value="{{ $filters['product_search'] }}"
+                    placeholder="Product or category"
+                >
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold">Category</label>
+                <select name="product_category" class="form-select">
+                    <option value="">All categories</option>
+                    @foreach ($productSalesCategories as $category)
+                        <option value="{{ $category }}" @selected($filters['product_category'] === $category)>{{ $category }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-success w-100">Apply</button>
+                <a href="{{ route('reports.index', [
+                    'type' => $reportMeta['type'],
+                    'daily_date_from' => $filters['daily_date_from'],
+                    'daily_date_to' => $filters['daily_date_to'],
+                ]) }}" class="btn btn-light border w-100">Clear</a>
+            </div>
+        </form>
 
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
@@ -155,6 +253,10 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <div class="p-3">
+            {{ $productSalesSummary->links('pagination::bootstrap-5') }}
         </div>
     </section>
 </x-app-layout>
