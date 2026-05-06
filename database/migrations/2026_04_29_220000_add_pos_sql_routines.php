@@ -51,6 +51,7 @@ SQL);
 
     private function installTriggers(): void
     {
+        // Auto-initialize inventory record when a new product is created - Lourde
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_product_after_insert
 AFTER INSERT ON product
@@ -61,8 +62,9 @@ BEGIN
 END
 SQL);
 
+        // Sync inventory stock total and update batch status when batch items are added - Lourde
         DB::unprepared(<<<'SQL'
-CREATE TRIGGER trg_batch_item_after_insert
+CREATE TRIGGER trg_batch_item_after_insert 
 AFTER INSERT ON batch_item
 FOR EACH ROW
 BEGIN
@@ -112,6 +114,7 @@ BEGIN
 END
 SQL);
 
+        // Recalculate inventory stock when batch item quantities are updated - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER after_batch_item_update_sync_inventory
 AFTER UPDATE ON batch_item
@@ -139,6 +142,7 @@ BEGIN
 END
 SQL);
 
+        // Update batch status (Open/Sold Out) when items in batch are updated - Lourde
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER after_batch_item_update_status
 AFTER UPDATE ON batch_item
@@ -198,6 +202,7 @@ BEGIN
 END
 SQL);
 
+        // Recalculate inventory and update batch status when batch items are deleted - Lourde
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_batch_item_after_delete
 AFTER DELETE ON batch_item
@@ -240,6 +245,7 @@ BEGIN
 END
 SQL);
 
+        // Validate sale quantities and available stock before allowing sale item insertion - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_sale_item_before_insert
 BEFORE INSERT ON sale_item
@@ -270,6 +276,7 @@ BEGIN
 END
 SQL);
 
+        // Deduct sold quantity from batch inventory after sale is confirmed -  Jonathan
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_sale_item_after_insert
 AFTER INSERT ON sale_item
@@ -283,6 +290,7 @@ BEGIN
 END
 SQL);
 
+        // Prevent supplier deletion if they have active (Open/Pending) batches - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER trg_supplier_before_delete
 BEFORE DELETE ON supplier
@@ -386,6 +394,7 @@ SQL);
 
     private function installViews(): void
     {
+        // Product inventory overview with current stock levels and status (Out of Stock, Low Stock, In Stock) - Lourde
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_product_inventory AS
 SELECT
@@ -405,6 +414,7 @@ LEFT JOIN category ON category.category_id = product.category_id
 LEFT JOIN inventory ON inventory.product_id = product.product_id
 SQL);
 
+        // Products with current stock below 20kg threshold (reorder alert) - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_low_stock_products AS
 SELECT
@@ -416,6 +426,7 @@ FROM vw_product_inventory
 WHERE current_stock < 20
 SQL);
 
+        // Batch details with product breakdown, quantities, and cost calculations - Lourde
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_batch_details AS
 SELECT
@@ -441,6 +452,7 @@ INNER JOIN user ON user.user_id = batch.user_id
 LEFT JOIN supplier ON supplier.supplier_id = batch.supplier_id
 SQL);
 
+        // Individual sale items with product, user, and line total information - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_sales_details AS
 SELECT
@@ -462,6 +474,7 @@ LEFT JOIN category ON category.category_id = product.category_id
 INNER JOIN user ON user.user_id = sale.user_id
 SQL);
 
+        // Daily sales summary showing transaction count and total sales per day - Lourde
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_daily_sales_summary AS
 SELECT
@@ -472,6 +485,7 @@ FROM vw_sales_details
 GROUP BY DATE(sale_date)
 SQL);
 
+        // Payment and sale summary with item count, quantities sold, and totals -  Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_payment_summary AS
 SELECT
