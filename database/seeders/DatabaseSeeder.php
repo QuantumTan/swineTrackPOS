@@ -18,10 +18,15 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::create([
-            'user_email' => 'test@swinetrack.local',
-            'user_password_hash' => Hash::make('password123'),
-        ]);
+        User::firstOrCreate(
+            ['user_email' => 'admin@swinetrack.local'],
+            ['user_password_hash' => Hash::make('password123')],
+        );
+
+        User::firstOrCreate(
+            ['user_email' => 'test@swinetrack.local'],
+            ['user_password_hash' => Hash::make('password123')],
+        );
 
         $this->call([
             ProductSeeder::class,

@@ -365,6 +365,7 @@ BEGIN
 
     COMMIT;
 END
+-- Views
 SQL);
     }
 
