@@ -13,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 class StockInService
 {
     /**
+     * Create a stock-in batch and its items, then sync inventory.
+     *
      * @param  array<string, mixed>  $validated
      */
     public function create(array $validated, int $userId): Batch
@@ -34,10 +36,11 @@ class StockInService
         });
     }
 
+    /**
+     * Prevent creating a new stock-in when another active batch still has quantity.
+     */
     private function ensureNoOpenBatchExists(): void
     {
-        // Check if there's any batch that is NOT Closed AND has items with remaining quantity
-        // Use a raw subquery to ensure the check is precise
         $openBatchExists = Batch::query()
             ->where('batch_status', '!=', BatchStatus::Closed->value)
             ->whereRaw('batch.batch_id IN (SELECT DISTINCT batch_id FROM batch_item WHERE qty_in_kg > 0)')
@@ -51,6 +54,8 @@ class StockInService
     }
 
     /**
+     * Update a batch and recalculate inventory impact.
+     *
      * @param  array<string, mixed>  $validated
      */
     public function update(Batch $batch, array $validated): void
@@ -76,6 +81,9 @@ class StockInService
         });
     }
 
+    /**
+     * Delete a batch and reverse its inventory effect.
+     */
     public function delete(Batch $batch): void
     {
         DB::transaction(function () use ($batch) {
@@ -97,6 +105,8 @@ class StockInService
     }
 
     /**
+     * Build normalized batch attributes from validated input.
+     *
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
@@ -120,6 +130,8 @@ class StockInService
     }
 
     /**
+     * Ensure an update does not leave multiple active batches with remaining quantity.
+     *
      * @param  array<string, mixed>  $validated
      */
     private function ensureOpenStatusDoesNotConflict(Batch $batch, array $validated): void
@@ -146,6 +158,8 @@ class StockInService
     }
 
     /**
+     * Check whether any item still has quantity above zero.
+     *
      * @param  iterable<int, BatchItem|array<string, mixed>|object>  $items
      */
     private function hasRemainingQuantity(iterable $items): bool
@@ -162,6 +176,8 @@ class StockInService
     }
 
     /**
+        * Persist all item rows for a batch.
+        *
      * @param  array<int, array<string, mixed>>  $items
      */
     private function createBatchItems(Batch $batch, array $items): void
@@ -177,6 +193,8 @@ class StockInService
     }
 
     /**
+        * Aggregate quantities by product id.
+        *
      * @param  iterable<int, BatchItem|array<string, mixed>|object>  $items
      * @return array<int, float>
      */
@@ -195,6 +213,8 @@ class StockInService
     }
 
     /**
+        * Apply inventory deltas from old and new product quantities.
+        *
      * @param  array<int, float>  $originalQuantities
      * @param  array<int, float>  $updatedQuantities
      */
@@ -214,6 +234,9 @@ class StockInService
         }
     }
 
+    /**
+     * Update a single product inventory record using a quantity delta.
+     */
     private function applyInventoryDelta(int $productId, float $delta): void
     {
         $inventory = Inventory::firstOrNew(['product_id' => $productId]);
@@ -225,6 +248,9 @@ class StockInService
         $inventory->save();
     }
 
+    /**
+     * Detect whether required MySQL triggers are installed for automatic inventory sync.
+     */
     private function batchItemTriggersSyncInventory(): bool
     {
         if (DB::getDriverName() !== 'mysql') {
