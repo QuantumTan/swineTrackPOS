@@ -31,28 +31,24 @@ class DashboardController extends Controller
                 [
                     'label' => 'Paid Sales',
                     'value' => $this->reports->formatMoney($totalSales),
-                    'trend' => $paymentSummary->count().' paid transaction(s)',
                     'icon' => 'bi-graph-up-arrow',
                     'tone' => 'green',
                 ],
                 [
                     'label' => 'Low Stock',
                     'value' => (string) count($lowStockProducts),
-                    'trend' => 'Products below the 20 kg threshold',
                     'icon' => 'bi-exclamation-triangle',
                     'tone' => 'orange',
                 ],
                 [
                     'label' => 'Inventory Snapshot',
                     'value' => (string) count($inventorySnapshot),
-                    'trend' => $zeroStockCount.' item(s) at zero stock',
                     'icon' => 'bi-box-seam',
                     'tone' => 'blue',
                 ],
                 [
                     'label' => 'Receiving Costs',
                     'value' => $this->reports->formatMoney($totalBatchCosts),
-                    'trend' => 'Recent intake line total',
                     'icon' => 'bi-clipboard-data',
                     'tone' => 'slate',
                 ],
@@ -62,7 +58,6 @@ class DashboardController extends Controller
             'inventorySnapshot' => $inventorySnapshot,
             'batchDetails' => $batchDetails,
             'recentTransactions' => $recentTransactions,
-            'inventoryStatusMix' => $this->reports->inventoryStatusMix($inventorySnapshot),
         ]);
     }
 }

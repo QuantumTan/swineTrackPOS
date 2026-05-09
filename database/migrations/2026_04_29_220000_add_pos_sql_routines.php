@@ -13,7 +13,6 @@ return new class extends Migration
             $this->dropMySqlObjects();
             $this->installFunctions();
             $this->installTriggers();
-            $this->installProcedures();
         }
 
         $this->installViews();
@@ -308,89 +307,7 @@ END
 SQL);
     }
 
-    private function installProcedures(): void
-    {
-        DB::unprepared(<<<'SQL'
-CREATE PROCEDURE sp_complete_pos_sale(
-    IN p_batch_id INT,
-    IN p_user_id INT,
-    IN p_cash_received DECIMAL(10,2),
-    IN p_items JSON,
-    OUT p_sale_id INT
-)
-BEGIN
-    DECLARE v_total DECIMAL(10,2) DEFAULT 0;
-    DECLARE v_index INT DEFAULT 0;
-    DECLARE v_count INT DEFAULT 0;
-    DECLARE v_short_stock_count INT DEFAULT 0;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        DROP TEMPORARY TABLE IF EXISTS tmp_pos_items;
-        RESIGNAL;
-    END;
 
-    START TRANSACTION;
-
-    SET v_count = JSON_LENGTH(p_items);
-
-    CREATE TEMPORARY TABLE tmp_pos_items (
-        product_id INT NOT NULL,
-        qty_sold_kg DECIMAL(10,3) NOT NULL
-    ) ENGINE=MEMORY;
-
-    WHILE v_index < v_count DO
-        INSERT INTO tmp_pos_items (product_id, qty_sold_kg)
-        VALUES (
-            CAST(JSON_UNQUOTE(JSON_EXTRACT(p_items, CONCAT('$[', v_index, '].product_id'))) AS UNSIGNED),
-            CAST(JSON_UNQUOTE(JSON_EXTRACT(p_items, CONCAT('$[', v_index, '].qty_sold_kg'))) AS DECIMAL(10,3))
-        );
-
-        SET v_index = v_index + 1;
-    END WHILE;
-
-    SELECT COALESCE(SUM(fn_pos_line_total(tmp_pos_items.qty_sold_kg, product.product_price_per_kilo)), 0)
-    INTO v_total
-    FROM tmp_pos_items
-    INNER JOIN product ON product.product_id = tmp_pos_items.product_id;
-
-    IF v_total <= 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'POS cart is empty';
-    END IF;
-
-    IF p_cash_received < v_total THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cash received is lower than the total amount';
-    END IF;
-
-    SELECT COUNT(*)
-    INTO v_short_stock_count
-    FROM tmp_pos_items
-    LEFT JOIN inventory ON inventory.product_id = tmp_pos_items.product_id
-    WHERE COALESCE(inventory.current_stock_kg, 0) < tmp_pos_items.qty_sold_kg;
-
-    IF v_short_stock_count > 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient stock for POS sale';
-    END IF;
-
-    INSERT INTO sale (batch_id, user_id, sale_date)
-    VALUES (p_batch_id, p_user_id, NOW());
-
-    SET p_sale_id = LAST_INSERT_ID();
-
-    INSERT INTO sale_item (sale_id, product_id, qty_sold_kg, price_per_kg)
-    SELECT p_sale_id, tmp_pos_items.product_id, tmp_pos_items.qty_sold_kg, product.product_price_per_kilo
-    FROM tmp_pos_items
-    INNER JOIN product ON product.product_id = tmp_pos_items.product_id;
-
-    INSERT INTO payment (sale_id, amount, payment_status, payment_date)
-    VALUES (p_sale_id, v_total, 'paid', NOW());
-
-    DROP TEMPORARY TABLE IF EXISTS tmp_pos_items;
-
-    COMMIT;
-END
-SQL);
-    }
 
     private function installViews(): void
     {
@@ -543,7 +460,6 @@ SQL);
             DB::unprepared("DROP TRIGGER IF EXISTS {$trigger}");
         }
 
-        DB::unprepared('DROP PROCEDURE IF EXISTS sp_complete_pos_sale');
         DB::unprepared('DROP FUNCTION IF EXISTS fn_pos_stock_status');
         DB::unprepared('DROP FUNCTION IF EXISTS fn_pos_line_total');
     }

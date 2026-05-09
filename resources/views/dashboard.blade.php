@@ -13,7 +13,6 @@
                 @include('pos.partials.summary-card', [
                     'label' => $card['label'],
                     'value' => $card['value'],
-                    'meta' => $card['trend'],
                     'icon' => $card['icon'],
                     'tone' => $card['tone'] ?? 'green',
                 ])
@@ -22,7 +21,7 @@
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-12 col-xl-4">
+        <div class="col-12 col-xl-6">
             <section class="content-card h-100">
                 @include('pos.partials.section-card-header', [
                     'title' => 'Action Center',
@@ -55,7 +54,7 @@
             </section>
         </div>
 
-        <div class="col-12 col-xl-4">
+        <div class="col-12 col-xl-6">
             <section class="content-card h-100">
                 @include('pos.partials.section-card-header', [
                     'title' => 'Stock Alerts',
@@ -83,36 +82,6 @@
             </section>
         </div>
 
-        <div class="col-12 col-xl-4">
-            <section class="content-card h-100">
-                @include('pos.partials.section-card-header', [
-                    'title' => 'Inventory Health',
-                    'subtitle' => 'Current stock status across products.',
-                ])
-
-                <div class="p-4 pt-3">
-                    <div class="donut-chart-wrap dashboard-donut-wrap">
-                        <div class="donut-chart" style="--segments: {{ $inventoryStatusMix['gradient'] }};">
-                            <div class="donut-center">
-                                <div class="donut-value">{{ collect($inventoryStatusMix['segments'])->sum('count') }}</div>
-                                <div class="donut-label">Products</div>
-                            </div>
-                        </div>
-                        <div class="donut-legend">
-                            @forelse ($inventoryStatusMix['segments'] as $segment)
-                                <div class="donut-legend-row">
-                                    <span class="donut-dot" style="--dot-color: {{ $segment['color'] }};"></span>
-                                    <span class="fw-semibold">{{ $segment['label'] }}</span>
-                                    <span class="text-secondary small">{{ $segment['count'] }}</span>
-                                </div>
-                            @empty
-                                <div class="report-empty">No inventory rows yet.</div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
     </div>
 
     <div class="row g-4">
