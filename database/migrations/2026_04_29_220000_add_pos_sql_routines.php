@@ -68,48 +68,14 @@ AFTER INSERT ON batch_item
 FOR EACH ROW
 BEGIN
     INSERT INTO inventory (product_id, current_stock_kg, last_updated_at)
-    VALUES (
-        NEW.product_id,
-        (
-            SELECT COALESCE(SUM(qty_in_kg), 0)
-            FROM batch_item
-            WHERE product_id = NEW.product_id
-        ),
-        NOW()
-    )
+    VALUES (NEW.product_id, (SELECT COALESCE(SUM(qty_in_kg), 0) FROM batch_item WHERE product_id = NEW.product_id), NOW())
     ON DUPLICATE KEY UPDATE
-        current_stock_kg = (
-            SELECT COALESCE(SUM(qty_in_kg), 0)
-            FROM batch_item
-            WHERE product_id = NEW.product_id
-        ),
+        current_stock_kg = (SELECT COALESCE(SUM(qty_in_kg), 0) FROM batch_item WHERE product_id = NEW.product_id),
         last_updated_at = NOW();
 
-    IF EXISTS (
-        SELECT 1
-        FROM batch
-        WHERE batch_id = NEW.batch_id
-            AND batch_status != 'Closed'
-    ) THEN
-        IF EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = NEW.batch_id
-        ) AND NOT EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = NEW.batch_id
-                AND qty_in_kg > 0
-        ) THEN
-            UPDATE batch
-            SET batch_status = 'Sold Out'
-            WHERE batch_id = NEW.batch_id;
-        ELSE
-            UPDATE batch
-            SET batch_status = 'Open'
-            WHERE batch_id = NEW.batch_id;
-        END IF;
-    END IF;
+    UPDATE batch
+    SET batch_status = CASE WHEN EXISTS (SELECT 1 FROM batch_item WHERE batch_id = NEW.batch_id AND qty_in_kg > 0) THEN 'Open' ELSE 'Sold Out' END
+    WHERE batch_id = NEW.batch_id AND batch_status != 'Closed';
 END
 SQL);
 
@@ -120,24 +86,9 @@ AFTER UPDATE ON batch_item
 FOR EACH ROW
 BEGIN
     UPDATE inventory
-    SET current_stock_kg = (
-            SELECT COALESCE(SUM(qty_in_kg), 0)
-            FROM batch_item
-            WHERE product_id = NEW.product_id
-        ),
+    SET current_stock_kg = (SELECT COALESCE(SUM(qty_in_kg), 0) FROM batch_item WHERE product_id = NEW.product_id),
         last_updated_at = NOW()
     WHERE product_id = NEW.product_id;
-
-    IF OLD.product_id <> NEW.product_id THEN
-        UPDATE inventory
-        SET current_stock_kg = (
-                SELECT COALESCE(SUM(qty_in_kg), 0)
-                FROM batch_item
-                WHERE product_id = OLD.product_id
-            ),
-            last_updated_at = NOW()
-        WHERE product_id = OLD.product_id;
-    END IF;
 END
 SQL);
 
@@ -147,56 +98,14 @@ CREATE TRIGGER after_batch_item_update_status
 AFTER UPDATE ON batch_item
 FOR EACH ROW
 BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM batch
-        WHERE batch_id = NEW.batch_id
-            AND batch_status != 'Closed'
-    ) THEN
-        IF EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = NEW.batch_id
-        ) AND NOT EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = NEW.batch_id
-                AND qty_in_kg > 0
-        ) THEN
-            UPDATE batch
-            SET batch_status = 'Sold Out'
-            WHERE batch_id = NEW.batch_id;
-        ELSE
-            UPDATE batch
-            SET batch_status = 'Open'
-            WHERE batch_id = NEW.batch_id;
-        END IF;
-    END IF;
+    UPDATE batch
+    SET batch_status = CASE WHEN EXISTS (SELECT 1 FROM batch_item WHERE batch_id = NEW.batch_id AND qty_in_kg > 0) THEN 'Open' ELSE 'Sold Out' END
+    WHERE batch_id = NEW.batch_id AND batch_status != 'Closed';
 
-    IF OLD.batch_id <> NEW.batch_id AND EXISTS (
-        SELECT 1
-        FROM batch
-        WHERE batch_id = OLD.batch_id
-            AND batch_status != 'Closed'
-    ) THEN
-        IF EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = OLD.batch_id
-        ) AND NOT EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = OLD.batch_id
-                AND qty_in_kg > 0
-        ) THEN
-            UPDATE batch
-            SET batch_status = 'Sold Out'
-            WHERE batch_id = OLD.batch_id;
-        ELSE
-            UPDATE batch
-            SET batch_status = 'Open'
-            WHERE batch_id = OLD.batch_id;
-        END IF;
+    IF OLD.batch_id <> NEW.batch_id THEN
+        UPDATE batch
+        SET batch_status = CASE WHEN EXISTS (SELECT 1 FROM batch_item WHERE batch_id = OLD.batch_id AND qty_in_kg > 0) THEN 'Open' ELSE 'Sold Out' END
+        WHERE batch_id = OLD.batch_id AND batch_status != 'Closed';
     END IF;
 END
 SQL);
@@ -208,39 +117,13 @@ AFTER DELETE ON batch_item
 FOR EACH ROW
 BEGIN
     UPDATE inventory
-    SET current_stock_kg = (
-            SELECT COALESCE(SUM(qty_in_kg), 0)
-            FROM batch_item
-            WHERE product_id = OLD.product_id
-        ),
+    SET current_stock_kg = (SELECT COALESCE(SUM(qty_in_kg), 0) FROM batch_item WHERE product_id = OLD.product_id),
         last_updated_at = NOW()
     WHERE product_id = OLD.product_id;
 
-    IF EXISTS (
-        SELECT 1
-        FROM batch
-        WHERE batch_id = OLD.batch_id
-            AND batch_status != 'Closed'
-    ) THEN
-        IF EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = OLD.batch_id
-        ) AND NOT EXISTS (
-            SELECT 1
-            FROM batch_item
-            WHERE batch_id = OLD.batch_id
-                AND qty_in_kg > 0
-        ) THEN
-            UPDATE batch
-            SET batch_status = 'Sold Out'
-            WHERE batch_id = OLD.batch_id;
-        ELSE
-            UPDATE batch
-            SET batch_status = 'Open'
-            WHERE batch_id = OLD.batch_id;
-        END IF;
-    END IF;
+    UPDATE batch
+    SET batch_status = CASE WHEN EXISTS (SELECT 1 FROM batch_item WHERE batch_id = OLD.batch_id AND qty_in_kg > 0) THEN 'Open' ELSE 'Sold Out' END
+    WHERE batch_id = OLD.batch_id AND batch_status != 'Closed';
 END
 SQL);
 
@@ -250,26 +133,11 @@ CREATE TRIGGER trg_sale_item_before_insert
 BEFORE INSERT ON sale_item
 FOR EACH ROW
 BEGIN
-    IF NEW.qty_sold_kg <= 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Sale quantity must be greater than zero';
+    IF NEW.qty_sold_kg <= 0 OR NEW.price_per_kg < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Sale quantity must be positive and price non-negative';
     END IF;
 
-    IF NEW.price_per_kg < 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Sale price must not be negative';
-    END IF;
-
-    IF COALESCE((SELECT current_stock_kg FROM inventory WHERE product_id = NEW.product_id), 0) < NEW.qty_sold_kg THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient stock for POS sale';
-    END IF;
-
-    IF COALESCE((
-        SELECT batch_item.qty_in_kg
-        FROM batch_item
-        INNER JOIN sale ON sale.batch_id = batch_item.batch_id
-        WHERE sale.sale_id = NEW.sale_id
-            AND batch_item.product_id = NEW.product_id
-        LIMIT 1
-    ), 0) < NEW.qty_sold_kg THEN
+    IF COALESCE((SELECT qty_in_kg FROM batch_item INNER JOIN sale ON sale.batch_id = batch_item.batch_id WHERE sale.sale_id = NEW.sale_id AND batch_item.product_id = NEW.product_id LIMIT 1), 0) < NEW.qty_sold_kg THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient batch stock for POS sale';
     END IF;
 END
@@ -433,30 +301,34 @@ SQL);
 
     private function dropViews(): void
     {
-        foreach ([
-            'vw_payment_summary',
-            'vw_daily_sales_summary',
-            'vw_sales_details',
-            'vw_batch_details',
-            'vw_low_stock_products',
-            'vw_product_inventory',
-        ] as $view) {
+        foreach (
+            [
+                'vw_payment_summary',
+                'vw_daily_sales_summary',
+                'vw_sales_details',
+                'vw_batch_details',
+                'vw_low_stock_products',
+                'vw_product_inventory',
+            ] as $view
+        ) {
             DB::unprepared("DROP VIEW IF EXISTS {$view}");
         }
     }
 
     private function dropMySqlObjects(): void
     {
-        foreach ([
-            'trg_sale_item_after_insert',
-            'trg_sale_item_before_insert',
-            'after_batch_item_update_status',
-            'after_batch_item_update_sync_inventory',
-            'trg_batch_item_after_delete',
-            'trg_batch_item_after_update',
-            'trg_batch_item_after_insert',
-            'trg_product_after_insert',
-        ] as $trigger) {
+        foreach (
+            [
+                'trg_sale_item_after_insert',
+                'trg_sale_item_before_insert',
+                'after_batch_item_update_status',
+                'after_batch_item_update_sync_inventory',
+                'trg_batch_item_after_delete',
+                'trg_batch_item_after_update',
+                'trg_batch_item_after_insert',
+                'trg_product_after_insert',
+            ] as $trigger
+        ) {
             DB::unprepared("DROP TRIGGER IF EXISTS {$trigger}");
         }
 
