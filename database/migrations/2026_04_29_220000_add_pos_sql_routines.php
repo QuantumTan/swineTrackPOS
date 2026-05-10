@@ -202,13 +202,10 @@ SQL);
         // Products with current stock below 20kg threshold (reorder alert) - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_low_stock_products AS
-SELECT
-    product_id,
-    product_name,
-    current_stock,
-    stock_status
-FROM vw_product_inventory
-WHERE current_stock < 20
+SELECT p.product_id, p.product_name, COALESCE(i.current_stock_kg, 0) AS current_stock, 'Low Stock' AS stock_status
+FROM product p
+LEFT JOIN inventory i ON i.product_id = p.product_id
+WHERE COALESCE(i.current_stock_kg, 0) < 20
 SQL);
 
         // Batch details with product breakdown, quantities, and cost calculations - Lourde
@@ -240,23 +237,14 @@ SQL);
         // Individual sale items with product, user, and line total information - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_sales_details AS
-SELECT
-    sale.sale_id,
-    sale.sale_date,
-    sale.batch_id,
-    user.user_email,
-    sale_item.sale_item_id,
-    sale_item.product_id,
-    product.product_name,
-    category.category_name,
-    sale_item.qty_sold_kg,
-    sale_item.price_per_kg,
-    ROUND(sale_item.qty_sold_kg * sale_item.price_per_kg, 2) AS line_total
-FROM sale_item
-INNER JOIN sale ON sale.sale_id = sale_item.sale_id
-INNER JOIN product ON product.product_id = sale_item.product_id
-LEFT JOIN category ON category.category_id = product.category_id
-INNER JOIN user ON user.user_id = sale.user_id
+SELECT s.sale_id, s.sale_date, s.batch_id, u.user_email, si.sale_item_id, si.product_id,
+  p.product_name, c.category_name, si.qty_sold_kg, si.price_per_kg,
+  ROUND(si.qty_sold_kg * si.price_per_kg, 2) AS line_total
+FROM sale_item si
+INNER JOIN sale s ON s.sale_id = si.sale_id
+INNER JOIN product p ON p.product_id = si.product_id
+LEFT JOIN category c ON c.category_id = p.category_id
+INNER JOIN user u ON u.user_id = s.user_id
 SQL);
 
         // Daily sales summary showing transaction count and total sales per day - Lourde
@@ -273,29 +261,14 @@ SQL);
         // Payment and sale summary with item count, quantities sold, and totals -  Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_payment_summary AS
-SELECT
-    sale.sale_id,
-    sale.sale_date,
-    sale.batch_id,
-    user.user_email,
-    payment.payment_status,
-    payment.payment_date,
-    payment.amount,
-    COUNT(sale_item.sale_item_id) AS item_count,
-    COALESCE(SUM(sale_item.qty_sold_kg), 0) AS total_qty_sold_kg,
-    ROUND(COALESCE(SUM(sale_item.qty_sold_kg * sale_item.price_per_kg), 0), 2) AS total_line_sales
-FROM sale
-INNER JOIN user ON user.user_id = sale.user_id
-LEFT JOIN payment ON payment.sale_id = sale.sale_id
-LEFT JOIN sale_item ON sale_item.sale_id = sale.sale_id
-GROUP BY
-    sale.sale_id,
-    sale.sale_date,
-    sale.batch_id,
-    user.user_email,
-    payment.payment_status,
-    payment.payment_date,
-    payment.amount
+SELECT s.sale_id, s.sale_date, s.batch_id, u.user_email, p.payment_status, p.payment_date, p.amount,
+  COUNT(si.sale_item_id) AS item_count, COALESCE(SUM(si.qty_sold_kg), 0) AS total_qty_sold_kg,
+  ROUND(COALESCE(SUM(si.qty_sold_kg * si.price_per_kg), 0), 2) AS total_line_sales
+FROM sale s
+INNER JOIN user u ON u.user_id = s.user_id
+LEFT JOIN payment p ON p.sale_id = s.sale_id
+LEFT JOIN sale_item si ON si.sale_id = s.sale_id
+GROUP BY s.sale_id, s.sale_date, s.batch_id, u.user_email, p.payment_status, p.payment_date, p.amount
 SQL);
     }
 
