@@ -91,7 +91,7 @@
                     'title' => 'Recent Sales',
                     'subtitle' => 'Latest completed sales transactions.',
                 ])
-
+                {{-- returns only summarized or compact data from  view payment summary as a source of data--}}
                 <div class="table-responsive">
                     <table class="table app-table align-middle mb-0">
                         <thead>

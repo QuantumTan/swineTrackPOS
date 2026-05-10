@@ -80,6 +80,12 @@ class PosController extends Controller
                 ->with('error', 'No stock-in batch has enough remaining quantity for every cart item.');
         }
 
+        if (! $this->saleItemInsertDeductsBatchItems()) {
+            return back()
+                ->withInput()
+                ->with('error', 'Required database trigger is missing.');
+        }
+
         try {
             $saleId = DB::transaction(function () use ($items, $batch, $request, $validated): int {
                 $products = Product::query()
@@ -93,7 +99,6 @@ class PosController extends Controller
                     ->get()
                     ->keyBy('product_id');
 
-                $saleItemInsertDeductsInventory = $this->saleItemInsertDeductsInventory();
                 $subtotal = 0;
 
                 foreach ($items as $item) {
@@ -111,24 +116,6 @@ class PosController extends Controller
                     throw new \RuntimeException('Cash received is lower than the total amount.');
                 }
 
-                if (! $this->saleItemInsertDeductsBatchItems()) {
-                    foreach ($items as $item) {
-                        $updated = DB::table('batch_item')
-                            ->where('batch_id', $batch->batch_id)
-                            ->where('product_id', $item['product_id'])
-                            ->where('qty_in_kg', '>=', $item['qty_sold_kg'])
-                            ->update([
-                                'qty_in_kg' => DB::raw('qty_in_kg - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
-                            ]);
-
-                        if ($updated !== 1) {
-                            throw new \RuntimeException('Insufficient batch stock for one or more cart items.');
-                        }
-                    }
-
-                    $this->syncBatchStatusFromItems($batch->batch_id);
-                }
-
                 $saleId = DB::table('sale')->insertGetId([
                     'batch_id' => $batch->batch_id,
                     'user_id' => $request->user()->user_id,
@@ -137,20 +124,6 @@ class PosController extends Controller
 
                 foreach ($items as $item) {
                     $product = $products->get($item['product_id']);
-
-                    if (! $saleItemInsertDeductsInventory) {
-                        $updated = DB::table('inventory')
-                            ->where('product_id', $item['product_id'])
-                            ->where('current_stock_kg', '>=', $item['qty_sold_kg'])
-                            ->update([
-                                'current_stock_kg' => DB::raw('current_stock_kg - '.number_format((float) $item['qty_sold_kg'], 3, '.', '')),
-                                'last_updated_at' => now(),
-                            ]);
-
-                        if ($updated !== 1) {
-                            throw new \RuntimeException('Insufficient stock for one or more cart items.');
-                        }
-                    }
 
                     DB::table('sale_item')->insert([
                         'sale_id' => $saleId,
@@ -231,18 +204,6 @@ class PosController extends Controller
             ->latest('batch_date')
             ->latest('batch_id')
             ->first();
-    }
-
-    private function saleItemInsertDeductsInventory(): bool
-    {
-        if (DB::getDriverName() !== 'mysql') {
-            return false;
-        }
-
-        return DB::table('information_schema.TRIGGERS')
-            ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
-            ->where('TRIGGER_NAME', 'trg_sale_item_after_insert')
-            ->exists();
     }
 
     private function saleItemInsertDeductsBatchItems(): bool

@@ -64,7 +64,7 @@
                 <a href="{{ route('reports.sales-activity') }}" class="btn btn-light border w-100">Clear</a>
             </div>
         </form>
-
+{{-- uses view payment salary as a source of data --}}
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
                 <thead>
