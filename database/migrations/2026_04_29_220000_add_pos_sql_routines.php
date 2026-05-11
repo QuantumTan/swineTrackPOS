@@ -404,6 +404,15 @@ SELECT
     product.product_price_per_kilo,
     COALESCE(inventory.current_stock_kg, 0) AS current_stock,
     inventory.last_updated_at,
+    -- total stock value for this product (price * current stock)
+    ROUND(COALESCE(inventory.current_stock_kg, 0) * COALESCE(product.product_price_per_kilo, 0), 2) AS stock_value,
+    -- most recent receiving date for this product (if any)
+    (
+        SELECT MAX(b.batch_date)
+        FROM batch_item bi
+        INNER JOIN batch b ON b.batch_id = bi.batch_id
+        WHERE bi.product_id = product.product_id
+    ) AS last_received_at,
     CASE
         WHEN COALESCE(inventory.current_stock_kg, 0) <= 0 THEN 'Out of Stock'
         WHEN COALESCE(inventory.current_stock_kg, 0) < 20 THEN 'Low Stock'

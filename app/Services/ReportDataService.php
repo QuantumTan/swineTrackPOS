@@ -121,7 +121,10 @@ class ReportDataService
                 'product_price_per_kilo' => $this->formatMoney($row->product_price_per_kilo),
                 'current_stock' => $this->formatWeight($row->current_stock),
                 'current_stock_value' => (float) $row->current_stock,
+                'stock_value' => $this->formatMoney($row->stock_value ?? 0),
+                'stock_value_value' => (float) ($row->stock_value ?? 0),
                 'last_updated_at' => $this->formatDateTime($row->last_updated_at),
+                'last_received_at' => $this->formatDateTime($row->last_received_at ?? null),
                 'stock_status' => $this->statusForStockLabel($row->stock_status),
             ])
             ->all();

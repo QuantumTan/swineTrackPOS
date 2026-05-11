@@ -90,7 +90,7 @@
                     'subtitle' => 'Current stock status across products.',
                 ])
 
-                <div class="p-4 pt-3">
+                <div class="p-4 pt-3 inventory-panel">
                     <div class="donut-chart-wrap dashboard-donut-wrap">
                         <div class="donut-chart" style="--segments: {{ $inventoryStatusMix['gradient'] }};">
                             <div class="donut-center">
@@ -109,6 +109,30 @@
                                 <div class="report-empty">No inventory rows yet.</div>
                             @endforelse
                         </div>
+                    </div>
+                    <div class="inventory-top-list mt-3 list-scroll">
+                        <h6 class="mb-2">Top products</h6>
+                        @php $top = array_slice($inventorySnapshot, 0, 4); @endphp
+                        @if(count($top) === 0)
+                            <div class="report-empty">No inventory rows yet.</div>
+                        @else
+                            <div class="d-grid gap-2">
+                                @foreach($top as $row)
+                                    <div class="card shadow-sm">
+                                        <div class="card-body d-flex justify-content-between align-items-center">
+                                            <div class="me-3">
+                                                <div class="fw-semibold mb-0">{{ $row['product_name'] }}</div>
+                                                <div class="text-secondary small">{{ $row['category_name'] }}</div>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="fw-semibold mb-0">{{ $row['current_stock'] }}</div>
+                                                <div class="text-secondary small">{{ $row['stock_value'] }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
             </section>
