@@ -35,10 +35,10 @@ class ReportController extends Controller
         $paginatedProductSalesSummary = $this->reports->paginatedProductSalesSummary($reportType, 10, $filters);
         $categorySalesSummary = $this->reports->categorySalesSummary($reportType);
 
-        $totalSales = collect($productSalesSummary)->sum(fn (array $row): float => $row['revenue_value']);
-        $transactionCount = collect($salesTrend)->sum(fn (array $row): int => $row['transactions']);
+        $totalSales = $this->reports->totalSalesAggregate();
+        $transactionCount = $this->reports->totalTransactionCountAggregate();
         $totalSoldQuantity = collect($productSalesSummary)->sum(fn (array $row): float => $row['qty_sold_value']);
-        $averageTransaction = $transactionCount > 0 ? $totalSales / $transactionCount : 0;
+        $averageTransaction = $this->reports->averageTransactionAggregate();
 
         return view('pos.reports', [
             'reportMeta' => [

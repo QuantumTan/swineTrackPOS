@@ -60,7 +60,7 @@
                 @forelse ($salesTrend as $bar)
                     <div class="bar-column">
                         <div class="bar-track report-trend-track">
-                            <div class="bar-fill graph-fill-revenue" style="--value: {{ $bar['height'] }};"></div>
+                            <div class="bar-fill graph-fill-revenue" style="--value: {{ $bar['height'] }};" ></div>
                         </div>
                         <div class="bar-label">{{ $bar['label'] }}</div>
                         <div class="bar-value report-revenue-text">{{ $bar['total_sales'] }}</div>

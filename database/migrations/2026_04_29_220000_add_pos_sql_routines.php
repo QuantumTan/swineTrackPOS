@@ -202,7 +202,12 @@ SQL);
         // Products with current stock below 20kg threshold (reorder alert) - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_low_stock_products AS
-SELECT p.product_id, p.product_name, COALESCE(i.current_stock_kg, 0) AS current_stock, 'Low Stock' AS stock_status
+SELECT 
+    p.product_id, 
+    p.product_name, 
+    COALESCE(i.current_stock_kg, 0) AS current_stock, 
+    'Low Stock' AS stock_status,
+    COUNT(*) OVER () AS total_count
 FROM product p
 LEFT JOIN inventory i ON i.product_id = p.product_id
 WHERE COALESCE(i.current_stock_kg, 0) < 20
@@ -239,7 +244,9 @@ SQL);
 CREATE VIEW vw_sales_details AS
 SELECT s.sale_id, s.sale_date, s.batch_id, u.user_email, si.sale_item_id, si.product_id,
   p.product_name, c.category_name, si.qty_sold_kg, si.price_per_kg,
-  ROUND(si.qty_sold_kg * si.price_per_kg, 2) AS line_total
+  ROUND(si.qty_sold_kg * si.price_per_kg, 2) AS line_total,
+  COUNT(DISTINCT s.sale_id) OVER () AS total_transactions,
+  ROUND(SUM(ROUND(si.qty_sold_kg * si.price_per_kg, 2)) OVER (), 2) AS total_sales
 FROM sale_item si
 INNER JOIN sale s ON s.sale_id = si.sale_id
 INNER JOIN product p ON p.product_id = si.product_id
@@ -263,7 +270,10 @@ SQL);
 CREATE VIEW vw_payment_summary AS
 SELECT s.sale_id, s.sale_date, s.batch_id, u.user_email, p.payment_status, p.payment_date, p.amount,
   COUNT(si.sale_item_id) AS item_count, COALESCE(SUM(si.qty_sold_kg), 0) AS total_qty_sold_kg,
-  ROUND(COALESCE(SUM(si.qty_sold_kg * si.price_per_kg), 0), 2) AS total_line_sales
+  ROUND(COALESCE(SUM(si.qty_sold_kg * si.price_per_kg), 0), 2) AS total_line_sales,
+  COUNT(*) OVER () AS total_transactions,
+  ROUND(SUM(COALESCE(p.amount, 0)) OVER (), 2) AS total_payments,
+  ROUND(AVG(COALESCE(p.amount, 0)) OVER (), 2) AS average_transaction_amount
 FROM sale s
 INNER JOIN user u ON u.user_id = s.user_id
 LEFT JOIN payment p ON p.sale_id = s.sale_id

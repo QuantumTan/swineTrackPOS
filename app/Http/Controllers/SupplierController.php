@@ -88,21 +88,24 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier): RedirectResponse
     {
-        if ($supplier->batches()->exists()) {
-            return redirect()
-                ->route('suppliers.index')
-                ->withErrors([
-                    'supplier_delete' => 'This supplier cannot be deleted while it is still used by other records.',
-                ]);
-        }
-
         try {
             $supplier->delete();
         } catch (QueryException $exception) {
+            // Extract the trigger's MESSAGE_TEXT from the exception
+            $message = $exception->getMessage();
+            
+            // MySQL error message format: "SQLSTATE[45000]: User-defined Exception: <line> <MESSAGE_TEXT>"
+            // Extract MESSAGE_TEXT between the last space and end
+            if (preg_match('/:\s*(.+)$/', $message, $matches)) {
+                $triggerMessage = trim($matches[1]);
+            } else {
+                $triggerMessage = $message;
+            }
+            
             return redirect()
                 ->route('suppliers.index')
                 ->withErrors([
-                    'supplier_delete' => 'This supplier cannot be deleted while it is still used by other records.',
+                    'supplier_delete' => $triggerMessage,
                 ]);
         }
 

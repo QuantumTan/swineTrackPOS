@@ -143,9 +143,20 @@ class PosController extends Controller
                 return $saleId;
             });
         } catch (\Throwable $exception) {
+            // Extract trigger MESSAGE_TEXT from QueryException
+            $message = $exception->getMessage();
+            
+            // MySQL error message format: "SQLSTATE[45000]: User-defined Exception: <line> <MESSAGE_TEXT>"
+            // Extract MESSAGE_TEXT between the last space and end
+            if (preg_match('/:\s*(.+)$/', $message, $matches)) {
+                $displayMessage = trim($matches[1]);
+            } else {
+                $displayMessage = $message;
+            }
+            
             return back()
                 ->withInput()
-                ->with('error', $exception->getMessage());
+                ->with('error', $displayMessage);
         }
 
         return redirect()

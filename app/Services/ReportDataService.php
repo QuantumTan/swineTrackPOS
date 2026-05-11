@@ -106,7 +106,43 @@ class ReportDataService
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * Get total count of low stock products from vw_low_stock_products view
+     */
+    public function lowStockProductsCount(): int
+    {
+        $row = DB::table('vw_low_stock_products')->first();
+        return (int) ($row?->total_count ?? 0);
+    }
+
+    /**
+     * Get total sales from vw_sales_details view
+     */
+    public function totalSalesAggregate(): float
+    {
+        $row = DB::table('vw_sales_details')->first();
+        return (float) ($row?->total_sales ?? 0);
+    }
+
+    /**
+     * Get total transaction count from vw_sales_details view
+     */
+    public function totalTransactionCountAggregate(): int
+    {
+        $row = DB::table('vw_sales_details')->first();
+        return (int) ($row?->total_transactions ?? 0);
+    }
+
+    /**
+     * Get average transaction amount from vw_payment_summary view
+     */
+    public function averageTransactionAggregate(): float
+    {
+        $row = DB::table('vw_payment_summary')->first();
+        return (float) ($row?->average_transaction_amount ?? 0);
+    }
+
+    /**
+     * Get total quantity sold from vw_sales_details view
      */
     public function inventorySnapshot(int $limit = 10): array
     {
@@ -151,20 +187,6 @@ class ReportDataService
                 'line_total_cost' => $this->formatMoney($row->line_total_cost),
                 'line_total_cost_value' => (float) $row->line_total_cost,
             ])
-            ->all();
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function salesDetails(int $limit = 10, array $filters = []): array
-    {
-        return $this->salesDetailsQuery($filters)
-            ->orderByDesc('sale_date')
-            ->orderByDesc('sale_id')
-            ->limit($limit)
-            ->get()
-            ->map(fn (object $row): array => $this->formatSalesDetailRow($row))
             ->all();
     }
 

@@ -25,6 +25,7 @@ class DashboardController extends Controller
         $zeroStockCount = collect($inventorySnapshot)
             ->filter(fn (array $row): bool => (float) $row['current_stock_value'] <= 0)
             ->count();
+        $lowStockCount = $this->reports->lowStockProductsCount();
 
         return view('dashboard', [
             'summaryCards' => [
@@ -36,7 +37,7 @@ class DashboardController extends Controller
                 ],
                 [
                     'label' => 'Low Stock',
-                    'value' => (string) count($lowStockProducts),
+                    'value' => (string) $lowStockCount,
                     'icon' => 'bi-exclamation-triangle',
                     'tone' => 'orange',
                 ],
