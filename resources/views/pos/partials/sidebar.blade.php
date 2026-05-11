@@ -39,7 +39,7 @@
         </a>
     </div>
 
-    <div class="flex-grow-1 overflow-auto px-3 py-4">
+    <div class="sidebar-scroll-area flex-grow-1 overflow-auto px-3 py-4">
         @foreach ($navigationGroups as $group)
             @if ($group['label'])
                 <div class="sidebar-label px-3 mb-2">{{ $group['label'] }}</div>
