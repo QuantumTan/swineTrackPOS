@@ -133,10 +133,12 @@ CREATE TRIGGER trg_sale_item_before_insert
 BEFORE INSERT ON sale_item
 FOR EACH ROW
 BEGIN
+    -- Validate quantity and price
     IF NEW.qty_sold_kg <= 0 OR NEW.price_per_kg < 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Sale quantity must be positive and price non-negative';
     END IF;
 
+    -- Check if batch has enough stock available
     IF COALESCE((SELECT qty_in_kg FROM batch_item INNER JOIN sale ON sale.batch_id = batch_item.batch_id WHERE sale.sale_id = NEW.sale_id AND batch_item.product_id = NEW.product_id LIMIT 1), 0) < NEW.qty_sold_kg THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient batch stock for POS sale';
     END IF;
@@ -149,6 +151,7 @@ CREATE TRIGGER trg_sale_item_after_insert
 AFTER INSERT ON sale_item
 FOR EACH ROW
 BEGIN
+    -- Reduce batch stock by amount sold
     UPDATE batch_item
     INNER JOIN sale ON sale.batch_id = batch_item.batch_id
     SET batch_item.qty_in_kg = batch_item.qty_in_kg - NEW.qty_sold_kg
@@ -163,6 +166,7 @@ CREATE TRIGGER trg_supplier_before_delete
 BEFORE DELETE ON supplier
 FOR EACH ROW
 BEGIN
+    -- Check for incomplete/active batches
     IF EXISTS (
         SELECT 1 FROM batch
         WHERE supplier_id = OLD.supplier_id
@@ -180,24 +184,25 @@ SQL);
     private function installViews(): void
     {
         // Product inventory overview with current stock levels and status (Out of Stock, Low Stock, In Stock) - Lourde
-        DB::unprepared(<<<'SQL'
-CREATE VIEW vw_product_inventory AS
-SELECT
-    product.product_id,
-    product.product_name,
-    category.category_name,
-    product.product_price_per_kilo,
-    COALESCE(inventory.current_stock_kg, 0) AS current_stock,
-    inventory.last_updated_at,
-    CASE
-        WHEN COALESCE(inventory.current_stock_kg, 0) <= 0 THEN 'Out of Stock'
-        WHEN COALESCE(inventory.current_stock_kg, 0) < 20 THEN 'Low Stock'
-        ELSE 'In Stock'
-    END AS stock_status
-FROM product
-LEFT JOIN category ON category.category_id = product.category_id
-LEFT JOIN inventory ON inventory.product_id = product.product_id
-SQL);
+        // COMMENTED OUT - No longer needed
+        // DB::unprepared(<<<'SQL'
+        // CREATE VIEW vw_product_inventory AS
+        // SELECT
+        //     product.product_id,
+        //     product.product_name,
+        //     category.category_name,
+        //     product.product_price_per_kilo,
+        //     COALESCE(inventory.current_stock_kg, 0) AS current_stock,
+        //     inventory.last_updated_at,
+        //     CASE
+        //         WHEN COALESCE(inventory.current_stock_kg, 0) <= 0 THEN 'Out of Stock'
+        //         WHEN COALESCE(inventory.current_stock_kg, 0) < 20 THEN 'Low Stock'
+        //         ELSE 'In Stock'
+        //     END AS stock_status
+        // FROM product
+        // LEFT JOIN category ON category.category_id = product.category_id
+        // LEFT JOIN inventory ON inventory.product_id = product.product_id
+        // SQL);
 
         // Products with current stock below 20kg threshold (reorder alert) - Jonathan
         DB::unprepared(<<<'SQL'
@@ -205,79 +210,76 @@ CREATE VIEW vw_low_stock_products AS
 SELECT 
     p.product_id, 
     p.product_name, 
-    COALESCE(i.current_stock_kg, 0) AS current_stock, 
-    'Low Stock' AS stock_status,
-    COUNT(*) OVER () AS total_count
+    COALESCE(i.current_stock_kg, 0) AS current_stock, -- Default to 0 if no inventory record
+    'Low Stock' AS stock_status
 FROM product p
 LEFT JOIN inventory i ON i.product_id = p.product_id
 WHERE COALESCE(i.current_stock_kg, 0) < 20
 SQL);
 
         // Batch details with product breakdown, quantities, and cost calculations - Lourde
-        DB::unprepared(<<<'SQL'
-CREATE VIEW vw_batch_details AS
-SELECT
-    batch.batch_id,
-    batch.batch_date,
-    batch.source_type,
-    batch.batch_status,
-    CASE
-        WHEN batch.source_type = 'Own Livestock' THEN 'Own Livestock'
-        ELSE COALESCE(supplier.supplier_name, 'N/A')
-    END AS supplier_name,
-    user.user_email,
-    batch_item.batch_item_id,
-    batch_item.product_id,
-    product.product_name,
-    batch_item.qty_in_kg,
-    batch_item.cost_per_kg,
-    ROUND(batch_item.qty_in_kg * batch_item.cost_per_kg, 2) AS line_total_cost
-FROM batch_item
-INNER JOIN batch ON batch.batch_id = batch_item.batch_id
-INNER JOIN product ON product.product_id = batch_item.product_id
-INNER JOIN user ON user.user_id = batch.user_id
-LEFT JOIN supplier ON supplier.supplier_id = batch.supplier_id
-SQL);
+//         DB::unprepared(<<<'SQL'
+// CREATE VIEW vw_batch_details AS
+// SELECT
+//     batch.batch_id,
+//     batch.batch_date,
+//     batch.source_type,
+//     batch.batch_status,
+//     CASE
+//         WHEN batch.source_type = 'Own Livestock' THEN 'Own Livestock'
+//         ELSE COALESCE(supplier.supplier_name, 'N/A')
+//     END AS supplier_name,
+//     user.user_email,
+//     batch_item.batch_item_id,
+//     batch_item.product_id,
+//     product.product_name,
+//     batch_item.qty_in_kg,
+//     batch_item.cost_per_kg,
+//     ROUND(batch_item.qty_in_kg * batch_item.cost_per_kg, 2) AS line_total_cost
+// FROM batch_item
+// INNER JOIN batch ON batch.batch_id = batch_item.batch_id
+// INNER JOIN product ON product.product_id = batch_item.product_id
+// INNER JOIN user ON user.user_id = batch.user_id
+// LEFT JOIN supplier ON supplier.supplier_id = batch.supplier_id
+// SQL);
 
         // Individual sale items with product, user, and line total information - Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_sales_details AS
-SELECT s.sale_id, s.sale_date, s.batch_id, u.user_email, si.sale_item_id, si.product_id,
-  p.product_name, c.category_name, si.qty_sold_kg, si.price_per_kg,
-  ROUND(si.qty_sold_kg * si.price_per_kg, 2) AS line_total,
-  COUNT(DISTINCT s.sale_id) OVER () AS total_transactions,
-  ROUND(SUM(ROUND(si.qty_sold_kg * si.price_per_kg, 2)) OVER (), 2) AS total_sales
+SELECT s.sale_id, s.sale_date, s.batch_id, u.user_email, si.sale_item_id,
+  p.product_name, c.category_name, si.qty_sold_kg,
+  ROUND(si.qty_sold_kg * si.price_per_kg, 2) AS line_total -- Calculate revenue per item
 FROM sale_item si
-INNER JOIN sale s ON s.sale_id = si.sale_id
-INNER JOIN product p ON p.product_id = si.product_id
-LEFT JOIN category c ON c.category_id = p.category_id
-INNER JOIN user u ON u.user_id = s.user_id
+INNER JOIN sale s ON s.sale_id = si.sale_id -- Get transaction details
+INNER JOIN product p ON p.product_id = si.product_id -- Get product info
+LEFT JOIN category c ON c.category_id = p.category_id -- Get category (optional)
+INNER JOIN user u ON u.user_id = s.user_id -- Get cashier
 SQL);
 
         // Daily sales summary showing transaction count and total sales per day - Lourde
-        DB::unprepared(<<<'SQL'
-CREATE VIEW vw_daily_sales_summary AS
-SELECT
-    DATE(sale_date) AS sale_day,
-    COUNT(DISTINCT sale_id) AS total_transactions,
-    ROUND(SUM(line_total), 2) AS total_sales
-FROM vw_sales_details
-GROUP BY DATE(sale_date)
-SQL);
+        // COMMENTED OUT - No longer needed
+        // DB::unprepared(<<<'SQL'
+        // CREATE VIEW vw_daily_sales_summary AS
+        // SELECT
+        //     DATE(s.sale_date) AS sale_day,
+        //     COUNT(DISTINCT s.sale_id) AS total_transactions,
+        //     ROUND(SUM(ROUND(si.qty_sold_kg * si.price_per_kg, 2)), 2) AS total_sales
+        // FROM sale s
+        // INNER JOIN sale_item si ON si.sale_id = s.sale_id
+        // GROUP BY DATE(s.sale_date)
+        // SQL);
 
         // Payment and sale summary with item count, quantities sold, and totals -  Jonathan
         DB::unprepared(<<<'SQL'
 CREATE VIEW vw_payment_summary AS
 SELECT s.sale_id, s.sale_date, s.batch_id, u.user_email, p.payment_status, p.payment_date, p.amount,
-  COUNT(si.sale_item_id) AS item_count, COALESCE(SUM(si.qty_sold_kg), 0) AS total_qty_sold_kg,
-  ROUND(COALESCE(SUM(si.qty_sold_kg * si.price_per_kg), 0), 2) AS total_line_sales,
-  COUNT(*) OVER () AS total_transactions,
-  ROUND(SUM(COALESCE(p.amount, 0)) OVER (), 2) AS total_payments,
-  ROUND(AVG(COALESCE(p.amount, 0)) OVER (), 2) AS average_transaction_amount
+  COUNT(si.sale_item_id) AS item_count, -- Number of line items per sale
+  COALESCE(SUM(si.qty_sold_kg), 0) AS total_qty_sold_kg, -- Total weight sold
+  ROUND(COALESCE(SUM(si.qty_sold_kg * si.price_per_kg), 0), 2) AS total_line_sales -- Total revenue
 FROM sale s
 INNER JOIN user u ON u.user_id = s.user_id
-LEFT JOIN payment p ON p.sale_id = s.sale_id
-LEFT JOIN sale_item si ON si.sale_id = s.sale_id
+LEFT JOIN payment p ON p.sale_id = s.sale_id -- May not have payment yet
+LEFT JOIN sale_item si ON si.sale_id = s.sale_id -- May have no items
 GROUP BY s.sale_id, s.sale_date, s.batch_id, u.user_email, p.payment_status, p.payment_date, p.amount
 SQL);
     }
@@ -289,7 +291,6 @@ SQL);
                 'vw_payment_summary',
                 'vw_daily_sales_summary',
                 'vw_sales_details',
-                'vw_batch_details',
                 'vw_low_stock_products',
                 'vw_product_inventory',
             ] as $view

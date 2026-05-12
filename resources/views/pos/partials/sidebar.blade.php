@@ -10,22 +10,22 @@
             'label' => 'Operations',
             'items' => [
                 ['label' => 'Sales (POS)', 'route' => 'sales.index', 'icon' => 'bi-cart3'],
-                ['label' => 'Stock-In', 'route' => 'stock-ins.index', 'icon' => 'bi-arrow-down-circle'],
+                // ['label' => 'Stock-In', 'route' => 'stock-ins.index', 'icon' => 'bi-arrow-down-circle'],
             ],
         ],
         [
             'label' => 'Management',
             'items' => [
-                ['label' => 'Products', 'route' => 'products.index', 'icon' => 'bi-box-seam'],
-                ['label' => 'Categories', 'route' => 'categories.index', 'icon' => 'bi-tags'],
+                // ['label' => 'Products', 'route' => 'products.index', 'icon' => 'bi-box-seam'],
+                // ['label' => 'Categories', 'route' => 'categories.index', 'icon' => 'bi-tags'],
                 ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'bi-truck'],
             ],
         ],
         [
             'label' => 'Monitoring',
             'items' => [
-                ['label' => 'Inventory', 'route' => 'inventory.index', 'icon' => 'bi-archive'],
-                ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'bi-file-earmark-text'],
+                // ['label' => 'Inventory', 'route' => 'inventory.index', 'icon' => 'bi-archive'],
+                // ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'bi-file-earmark-text'], // COMMENTED OUT - Reports module not assigned
                 ['label' => 'Sales Activity', 'route' => 'reports.sales-activity', 'icon' => 'bi-receipt'],
             ],
         ],

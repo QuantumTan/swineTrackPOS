@@ -121,7 +121,8 @@
             </section>
         </div>
 
-        <div class="col-12 col-xl-6">
+        {{-- COMMENTED OUT - vw_batch_details view no longer exists --}}
+        {{-- <div class="col-12 col-xl-6">
             <section class="content-card h-100">
                 @include('pos.partials.section-card-header', [
                     'title' => 'Receiving Review',
@@ -139,22 +140,23 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($batchDetails as $row)
+                            {{-- COMMENTED OUT - vw_batch_details view no longer exists --}}
+                            {{-- @forelse ($batchDetails as $row)
                                 <tr>
                                     <td class="text-secondary">{{ $row['batch_id'] }}</td>
                                     <td class="fw-semibold">{{ $row['product_name'] }}</td>
                                     <td>{{ $row['qty_in_kg'] }}</td>
                                     <td class="fw-semibold">{{ $row['line_total_cost'] }}</td>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td class="text-center text-secondary py-4" colspan="4">No receiving rows available.</td>
-                                </tr>
-                            @endforelse
+                            @empty --}}
+                                {{-- <tr>
+                                    <td class="text-center text-secondary py-4" colspan="4">Receiving review data unavailable.</td>
+                                </tr> --}}
+                            {{-- @endforelse --}}
                         </tbody>
                     </table>
                 </div>
             </section>
-        </div>
+        </div> --}}
     </div>
 </x-app-layout>

@@ -475,13 +475,10 @@ document.querySelectorAll('[data-pos-form]').forEach((form) => {
             return;
         }
 
-        if (qty <= 0) {
-            if (removeWhenZero) {
-                cart.delete(item.id);
-                renderCart();
-            } else {
-                qtyInput.value = item.qty.toFixed(3);
-            }
+        // Allow 0 and negative numbers for SQL trigger testing
+        if (removeWhenZero && qty === 0) {
+            cart.delete(item.id);
+            renderCart();
             return;
         }
 

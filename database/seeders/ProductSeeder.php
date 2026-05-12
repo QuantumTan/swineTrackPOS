@@ -29,6 +29,18 @@ class ProductSeeder extends Seeder
                 'category_name' => 'Offal',
                 'category_description' => 'Organ meats and related products sold by kilogram.',
             ],
+            [
+                'category_name' => 'Processed Meat',
+                'category_description' => 'Prepared and processed pork products.',
+            ],
+            [
+                'category_name' => 'Specialty Items',
+                'category_description' => 'Special and seasonal pork items.',
+            ],
+            [
+                'category_name' => 'Cured Meat',
+                'category_description' => 'Cured and smoked pork products.',
+            ],
         ];
 
         foreach ($categories as $category) {

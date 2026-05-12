@@ -12,20 +12,21 @@ class ReportDataService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function dailySalesSummary(int $limit = 7): array
-    {
-        return DB::table('vw_daily_sales_summary')
-            ->orderByDesc('sale_day')
-            ->limit($limit)
-            ->get()
-            ->map(fn (object $row): array => [
-                'sale_day' => $this->formatDate($row->sale_day),
-                'total_transactions' => (int) $row->total_transactions,
-                'total_sales' => $this->formatMoney($row->total_sales),
-                'total_sales_value' => (float) $row->total_sales,
-            ])
-            ->all();
-    }
+    // COMMENTED OUT - View vw_daily_sales_summary no longer exists
+    // public function dailySalesSummary(int $limit = 7): array
+    // {
+    //     return DB::table('vw_daily_sales_summary')
+    //         ->orderByDesc('sale_day')
+    //         ->limit($limit)
+    //         ->get()
+    //         ->map(fn (object $row): array => [
+    //             'sale_day' => $this->formatDate($row->sale_day),
+    //             'total_transactions' => (int) $row->total_transactions,
+    //             'total_sales' => $this->formatMoney($row->total_sales),
+    //             'total_sales_value' => (float) $row->total_sales,
+    //         ])
+    //         ->all();
+    // }
 
     /**
      * @return array{start: Carbon|null, end: Carbon|null, label: string}
@@ -144,51 +145,53 @@ class ReportDataService
     /**
      * Get total quantity sold from vw_sales_details view
      */
-    public function inventorySnapshot(int $limit = 10): array
-    {
-        return DB::table('vw_product_inventory')
-            ->orderBy('product_id')
-            ->limit($limit)
-            ->get()
-            ->map(fn (object $row): array => [
-                'product_id' => $this->formatProductId($row->product_id),
-                'product_name' => $row->product_name,
-                'category_name' => $row->category_name ?? '-',
-                'product_price_per_kilo' => $this->formatMoney($row->product_price_per_kilo),
-                'current_stock' => $this->formatWeight($row->current_stock),
-                'current_stock_value' => (float) $row->current_stock,
-                'last_updated_at' => $this->formatDateTime($row->last_updated_at),
-                'stock_status' => $this->statusForStockLabel($row->stock_status),
-            ])
-            ->all();
-    }
+    // COMMENTED OUT - View vw_product_inventory no longer exists
+    // public function inventorySnapshot(int $limit = 10): array
+    // {
+    //     return DB::table('vw_product_inventory')
+    //         ->orderBy('product_id')
+    //         ->limit($limit)
+    //         ->get()
+    //         ->map(fn (object $row): array => [
+    //             'product_id' => $this->formatProductId($row->product_id),
+    //             'product_name' => $row->product_name,
+    //             'category_name' => $row->category_name ?? '-',
+    //             'product_price_per_kilo' => $this->formatMoney($row->product_price_per_kilo),
+    //             'current_stock' => $this->formatWeight($row->current_stock),
+    //             'current_stock_value' => (float) $row->current_stock,
+    //             'last_updated_at' => $this->formatDateTime($row->last_updated_at),
+    //             'stock_status' => $this->statusForStockLabel($row->stock_status),
+    //         ])
+    //         ->all();
+    // }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function batchDetails(int $limit = 10): array
-    {
-        return DB::table('vw_batch_details')
-            ->orderByDesc('batch_date')
-            ->orderByDesc('batch_id')
-            ->limit($limit)
-            ->get()
-            ->map(fn (object $row): array => [
-                'batch_id' => $this->formatBatchId($row->batch_id),
-                'batch_date' => $this->formatDateTime($row->batch_date),
-                'source_type' => $row->source_type,
-                'batch_status' => $this->statusForBatchLabel($row->batch_status),
-                'supplier_name' => $row->supplier_name,
-                'user_email' => $row->user_email,
-                'batch_item_id' => $this->formatBatchItemId($row->batch_item_id),
-                'product_name' => $row->product_name,
-                'qty_in_kg' => $this->formatWeight($row->qty_in_kg),
-                'cost_per_kg' => $this->formatMoney($row->cost_per_kg),
-                'line_total_cost' => $this->formatMoney($row->line_total_cost),
-                'line_total_cost_value' => (float) $row->line_total_cost,
-            ])
-            ->all();
-    }
+    // COMMENTED OUT - View vw_batch_details no longer exists
+    // public function batchDetails(int $limit = 10): array
+    // {
+    //     return DB::table('vw_batch_details')
+    //         ->orderByDesc('batch_date')
+    //         ->orderByDesc('batch_id')
+    //         ->limit($limit)
+    //         ->get()
+    //         ->map(fn (object $row): array => [
+    //             'batch_id' => $this->formatBatchId($row->batch_id),
+    //             'batch_date' => $this->formatDateTime($row->batch_date),
+    //             'source_type' => $row->source_type,
+    //             'batch_status' => $this->statusForBatchLabel($row->batch_status),
+    //             'supplier_name' => $row->supplier_name,
+    //             'user_email' => $row->user_email,
+    //             'batch_item_id' => $this->formatBatchItemId($row->batch_item_id),
+    //             'product_name' => $row->product_name,
+    //             'qty_in_kg' => $this->formatWeight($row->qty_in_kg),
+    //             'cost_per_kg' => $this->formatMoney($row->cost_per_kg),
+    //             'line_total_cost' => $this->formatMoney($row->line_total_cost),
+    //             'line_total_cost_value' => (float) $row->line_total_cost,
+    //         ])
+    //         ->all();
+    // }
 
     /**
      * @param  array<string, mixed>  $filters
@@ -672,149 +675,7 @@ class ReportDataService
         ];
     }
 
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     * @return array<int, array<string, mixed>>
-     */
-    public function stockGraph(array $rows): array
-    {
-        $maxStock = max(collect($rows)->max('current_stock_value') ?? 0, 1);
 
-        return collect($rows)
-            ->take(4)
-            ->map(fn (array $row): array => [
-                'label' => $row['product_name'],
-                'value' => $row['current_stock'],
-                'width' => $this->graphWidth((float) $row['current_stock_value'], $maxStock),
-                'type' => ($row['stock_status'] ?? $row['status'])['class'],
-            ])
-            ->all();
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     * @return array<int, array<string, mixed>>
-     */
-    public function lowStockRiskGraph(array $rows, float $threshold = 20): array
-    {
-        return collect($rows)
-            ->take(6)
-            ->map(fn (array $row): array => [
-                'label' => $row['product_name'],
-                'value' => $row['current_stock'],
-                'width' => min(100, $this->graphWidth((float) $row['current_stock_value'], max($threshold, 1))),
-                'type' => $row['status']['class'],
-            ])
-            ->all();
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     * @return array{segments: array<int, array<string, mixed>>, gradient: string}
-     */
-    public function inventoryStatusMix(array $rows): array
-    {
-        $segments = collect($rows)
-            ->groupBy(fn (array $row): string => $row['stock_status']['label'])
-            ->map(function (Collection $group, string $label): array {
-                $status = $this->statusForStockLabel($label);
-
-                return [
-                    'label' => $label,
-                    'count' => $group->count(),
-                    'class' => $status['class'],
-                    'color' => match ($status['class']) {
-                        'danger' => '#d24c4c',
-                        'warning' => '#df7b2f',
-                        default => '#1f9b4b',
-                    },
-                ];
-            })
-            ->sortBy(fn (array $segment): int => match ($segment['label']) {
-                'In Stock' => 1,
-                'Low Stock' => 2,
-                default => 3,
-            })
-            ->values();
-
-        $total = max($segments->sum('count'), 1);
-        $cursor = 0.0;
-        $gradientParts = [];
-
-        $segments = $segments
-            ->map(function (array $segment) use ($total, &$cursor, &$gradientParts): array {
-                $percent = ($segment['count'] / $total) * 100;
-                $start = $cursor;
-                $cursor += $percent;
-                $gradientParts[] = "{$segment['color']} {$start}% {$cursor}%";
-
-                return [
-                    ...$segment,
-                    'percent' => round($percent),
-                ];
-            })
-            ->all();
-
-        return [
-            'segments' => $segments,
-            'gradient' => $gradientParts ? implode(', ', $gradientParts) : '#ecf2f8 0% 100%',
-        ];
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     * @return array<int, array<string, mixed>>
-     */
-    public function moneyGraph(array $rows, string $valueKey, string $labelValueKey): array
-    {
-        $maxValue = max(collect($rows)->max($valueKey) ?? 0, 1);
-
-        return collect($rows)
-            ->take(4)
-            ->map(fn (array $row, int $index): array => [
-                'label' => $row['product_name'],
-                'value' => $row[$labelValueKey],
-                'width' => $this->graphWidth((float) $row[$valueKey], $maxValue),
-                'type' => ['primary', 'warning', 'success', 'danger'][$index % 4],
-            ])
-            ->all();
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $batchRows
-     * @param  array<int, array<string, mixed>>  $salesRows
-     * @return array<int, array<string, mixed>>
-     */
-    public function costSalesComparison(array $batchRows, array $salesRows): array
-    {
-        $costs = collect($batchRows)
-            ->groupBy('product_name')
-            ->map(fn (Collection $rows): float => $rows->sum('line_total_cost_value'));
-
-        $sales = collect($salesRows)
-            ->groupBy('product_name')
-            ->map(fn (Collection $rows): float => $rows->sum('line_total_value'));
-
-        $products = $costs->keys()
-            ->merge($sales->keys())
-            ->unique()
-            ->values();
-
-        $maxValue = max($costs->max() ?? 0, $sales->max() ?? 0, 1);
-
-        return $products
-            ->map(fn (string $product): array => [
-                'label' => $product,
-                'cost' => $this->formatMoney($costs->get($product, 0)),
-                'sales' => $this->formatMoney($sales->get($product, 0)),
-                'cost_width' => $this->graphWidth($costs->get($product, 0), $maxValue),
-                'sales_width' => $this->graphWidth($sales->get($product, 0), $maxValue),
-            ])
-            ->sortByDesc(fn (array $row): int => max($row['cost_width'], $row['sales_width']))
-            ->take(6)
-            ->values()
-            ->all();
-    }
 
     public function formatMoney(float|int|string|null $value): string
     {

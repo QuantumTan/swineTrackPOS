@@ -9,8 +9,6 @@
 
     <section class="content-card report-filter-card mb-4">
         <form method="GET" action="{{ route('reports.index') }}" class="report-filter-form">
-            <input type="hidden" name="daily_date_from" value="{{ $filters['daily_date_from'] }}">
-            <input type="hidden" name="daily_date_to" value="{{ $filters['daily_date_to'] }}">
             <input type="hidden" name="product_search" value="{{ $filters['product_search'] }}">
             <input type="hidden" name="product_category" value="{{ $filters['product_category'] }}">
 
@@ -73,63 +71,10 @@
         </div>
     </section>
 
-    <div class="row g-4 mb-4">
-        <div class="col-12 col-xl-6">
-            <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <h3 class="section-title mb-0">Top Selling Products</h3>
-                </div>
+    {{-- COMMENTED OUT - Removed Top Selling Products and Sales by Category sections --}}
 
-                <div class="report-chart-body">
-                    <div class="top-products-chart">
-                        @forelse ($topProductsGraph as $item)
-                            <div class="top-product-row">
-                                <div class="top-product-label">{{ $item['label'] }}</div>
-                                <div class="top-product-track">
-                                    <div class="top-product-fill" style="--value: {{ $item['width'] }};"></div>
-                                </div>
-                                <div class="top-product-value">{{ $item['value'] }}</div>
-                            </div>
-                        @empty
-                            <div class="report-empty">No product sales for this period.</div>
-                        @endforelse
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <div class="col-12 col-xl-6">
-            <section class="content-card h-100">
-                <div class="card-header-clean">
-                    <h3 class="section-title mb-0">Sales by Category</h3>
-                </div>
-
-                <div class="report-chart-body">
-                    <div class="donut-chart-wrap">
-                        <div class="donut-chart" style="--segments: {{ $categorySalesDonut['gradient'] }};">
-                            <div class="donut-center">
-                                <div class="donut-value">{{ count($categorySalesDonut['segments']) }}</div>
-                                <div class="donut-label">Categories</div>
-                            </div>
-                        </div>
-                        <div class="donut-legend">
-                            @forelse ($categorySalesDonut['segments'] as $segment)
-                                <div class="donut-legend-row">
-                                    <span class="donut-dot" style="--dot-color: {{ $segment['color'] }};"></span>
-                                    <span class="fw-semibold">{{ $segment['category_name'] }}</span>
-                                    <span class="text-secondary small">{{ $segment['revenue'] }} | {{ $segment['percent'] }}%</span>
-                                </div>
-                            @empty
-                                <div class="report-empty">No category sales for this period.</div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <section class="content-card mb-4">
+    {{-- COMMENTED OUT - vw_daily_sales_summary view no longer exists --}}
+    {{-- <section class="content-card mb-4">
         <div class="card-header-clean">
             <h3 class="section-title mb-0">Daily Sales Summary</h3>
             <div class="section-subtitle mt-2">Daily transaction totals for the selected report period.</div>
@@ -176,7 +121,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td class="text-center text-secondary py-4" colspan="3">No daily sales summary rows for this period.</td>
+                            <td class="text-center text-secondary py-4" colspan="3">Daily sales summary data unavailable.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -186,7 +131,7 @@
         <div class="p-3">
             {{ $dailySalesSummary->links('pagination::bootstrap-5') }}
         </div>
-    </section>
+    </section> --}}
 
     <section class="content-card mb-4">
         <div class="card-header-clean">
@@ -195,9 +140,8 @@
         </div>
 
         <form method="GET" action="{{ route('reports.index') }}" class="row g-3 m-2">
-            <input type="hidden" name="type" value="{{ $reportMeta['type'] }}">
-            <input type="hidden" name="daily_date_from" value="{{ $filters['daily_date_from'] }}">
-            <input type="hidden" name="daily_date_to" value="{{ $filters['daily_date_to'] }}">
+            <input type="hidden" name="product_search" value="{{ $filters['product_search'] }}">
+            <input type="hidden" name="product_category" value="{{ $filters['product_category'] }}">
 
             <div class="col-12 col-md-4">
                 <label class="form-label fw-semibold">Search</label>
@@ -221,9 +165,8 @@
             <div class="col-12 col-md-4 d-flex align-items-end gap-2">
                 <button type="submit" class="btn btn-success w-100">Apply</button>
                 <a href="{{ route('reports.index', [
-                    'type' => $reportMeta['type'],
-                    'daily_date_from' => $filters['daily_date_from'],
-                    'daily_date_to' => $filters['daily_date_to'],
+                    'product_search' => '',
+                    'product_category' => '',
                 ]) }}" class="btn btn-light border w-100">Clear</a>
             </div>
         </form>

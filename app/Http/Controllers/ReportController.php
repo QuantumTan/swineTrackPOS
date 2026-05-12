@@ -13,25 +13,19 @@ class ReportController extends Controller
     public function index(Request $request): View
     {
         $filters = $request->validate([
-            'type' => ['nullable', 'in:daily,weekly,monthly,yearly'],
-            'daily_date_from' => ['nullable', 'date'],
-            'daily_date_to' => ['nullable', 'date', 'after_or_equal:daily_date_from'],
             'product_search' => ['nullable', 'string', 'max:100'],
             'product_category' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $reportType = $request->string('type')->toString() ?: 'monthly';
-        $reportType = in_array($reportType, ['daily', 'weekly', 'monthly', 'yearly'], true) ? $reportType : 'monthly';
+        $reportType = 'monthly';
         $filters = [
-            'daily_date_from' => $filters['daily_date_from'] ?? '',
-            'daily_date_to' => $filters['daily_date_to'] ?? '',
             'product_search' => trim((string) ($filters['product_search'] ?? '')),
             'product_category' => trim((string) ($filters['product_category'] ?? '')),
         ];
         $period = $this->reports->periodFor($reportType);
-        $salesTrend = $this->reports->salesTrendForPeriod($reportType);
+        // $salesTrend = $this->reports->salesTrendForPeriod($reportType); // COMMENTED OUT - vw_daily_sales_summary view no longer exists
         $productSalesSummary = $this->reports->productSalesSummary($reportType);
-        $paginatedDailySalesSummary = $this->reports->paginatedDailySalesSummary($reportType, 10, $filters);
+        // $paginatedDailySalesSummary = $this->reports->paginatedDailySalesSummary($reportType, 10, $filters); // COMMENTED OUT - vw_daily_sales_summary view no longer exists
         $paginatedProductSalesSummary = $this->reports->paginatedProductSalesSummary($reportType, 10, $filters);
         $categorySalesSummary = $this->reports->categorySalesSummary($reportType);
 
@@ -79,13 +73,10 @@ class ReportController extends Controller
                 ],
             ],
             'reportTypes' => [
-                'daily' => 'Daily',
-                'weekly' => 'Weekly',
                 'monthly' => 'Monthly',
-                'yearly' => 'Yearly',
             ],
-            'salesTrend' => $this->reports->salesGraph($salesTrend),
-            'dailySalesSummary' => $paginatedDailySalesSummary,
+            'salesTrend' => [], // COMMENTED OUT - vw_daily_sales_summary view no longer exists
+            'dailySalesSummary' => [], // COMMENTED OUT - vw_daily_sales_summary view no longer exists
             'topProductsGraph' => $this->reports->topProductsGraph($productSalesSummary),
             'categorySalesDonut' => $this->reports->categorySalesDonut($categorySalesSummary),
             'productSalesSummary' => $paginatedProductSalesSummary,

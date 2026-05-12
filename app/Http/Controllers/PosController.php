@@ -53,7 +53,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:product,product_id'],
-            'items.*.qty_sold_kg' => ['required', 'numeric', 'gt:0'],
+            'items.*.qty_sold_kg' => ['required', 'numeric'], // Allow 0 and negative for trigger testing
             'cash_received' => ['required', 'numeric', 'gte:0'],
         ]);
 

@@ -3,7 +3,6 @@
         'title' => 'Sales Activity',
         'subtitle' => 'Recent sold items, payments, and cashier activity.',
         'actions' => new \Illuminate\Support\HtmlString(
-            '<a class="btn btn-light border px-4" href="'.route('reports.index').'"><i class="bi bi-arrow-left me-2"></i>Reports</a>'
         ),
     ])
 

@@ -152,8 +152,7 @@ return new class extends Migration
             DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_qty CHECK (qty_in_kg >= 0)');
             DB::statement('ALTER TABLE batch_item ADD CONSTRAINT chk_batch_cost CHECK (cost_per_kg >= 0)');
             DB::statement('ALTER TABLE inventory ADD CONSTRAINT chk_inventory_stock CHECK (current_stock_kg >= 0)');
-            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_qty CHECK (qty_sold_kg >= 0)');
-            DB::statement('ALTER TABLE sale_item ADD CONSTRAINT chk_sale_price CHECK (price_per_kg >= 0)');
+            // Removed sale_item constraints to allow SQL trigger testing
             DB::statement('ALTER TABLE payment ADD CONSTRAINT chk_payment_amount CHECK (amount >= 0)');
         }
     }
