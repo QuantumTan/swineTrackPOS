@@ -73,6 +73,7 @@
                         <th>Batch</th>
                         <th>User</th>
                         <th>Product</th>
+                        <th>Category</th>
                         <th>Qty Sold</th>
                         <th>Price / kg</th>
                         <th>Line Total</th>
@@ -86,13 +87,14 @@
                             <td>{{ $row['batch_id'] }}</td>
                             <td>{{ $row['user_email'] }}</td>
                             <td class="fw-semibold">{{ $row['product_name'] }}</td>
+                            <td>{{ $row['category_name'] }}</td>
                             <td>{{ $row['qty_sold_kg'] }}</td>
                             <td>{{ $row['price_per_kg'] }}</td>
                             <td class="fw-semibold">{{ $row['line_total'] }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="text-center text-secondary py-4" colspan="8">No sales activity matches the current filters.</td>
+                            <td class="text-center text-secondary py-4" colspan="9">No sales activity matches the current filters.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -159,10 +161,12 @@
                     <tr>
                         <th>Sale ID</th>
                         <th>Date</th>
+                        <th>User</th>
                         <th>Status</th>
                         <th>Amount</th>
                         <th>Items</th>
                         <th>Total Qty Sold</th>
+                        <th>Total Sales</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -170,14 +174,16 @@
                         <tr>
                             <td class="text-secondary">{{ $row['sale_id'] }}</td>
                             <td>{{ $row['sale_date'] }}</td>
+                            <td>{{ $row['user_email'] }}</td>
                             <td class="text-capitalize">{{ $row['payment_status'] }}</td>
                             <td class="fw-semibold">{{ $row['amount'] }}</td>
                             <td>{{ $row['item_count'] }} item(s)</td>
                             <td>{{ $row['total_qty_sold_kg'] }}</td>
+                            <td class="fw-semibold">{{ $row['total_line_sales'] }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="text-center text-secondary py-4" colspan="6">No payment summary rows available.</td>
+                            <td class="text-center text-secondary py-4" colspan="8">No payment summary rows available.</td>
                         </tr>
                     @endforelse
                 </tbody>

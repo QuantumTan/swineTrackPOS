@@ -513,12 +513,15 @@ class ReportDataService
         return [
             'sale_id' => $this->formatSaleId($row->sale_id),
             'sale_date' => $this->formatDateTime($row->sale_date),
+            'user_email' => $row->user_email,
             'payment_status' => $row->payment_status ?? 'pending',
             'amount' => $this->formatMoney($row->amount),
             'amount_value' => (float) $row->amount,
             'item_count' => (int) $row->item_count,
             'total_qty_sold_kg' => $this->formatWeight($row->total_qty_sold_kg),
             'total_qty_sold_value' => (float) $row->total_qty_sold_kg,
+            'total_line_sales' => $this->formatMoney($row->total_line_sales),
+            'total_line_sales_value' => (float) $row->total_line_sales,
         ];
     }
 
