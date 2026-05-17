@@ -114,7 +114,7 @@ BEGIN
 END
 SQL);
 
-        // Recalculate inventory stock when batch item quantities are updated - Jonathan
+        // Recalculate inventory stock when batch item quantities are updated - Lourde
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER after_batch_item_update_sync_inventory
 AFTER UPDATE ON batch_item
