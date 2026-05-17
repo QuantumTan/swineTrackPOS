@@ -47,32 +47,6 @@ class Batch extends Model
         });
     }
 
-    public function manualStatus(): BatchStatus
-    {
-        return $this->batch_status === BatchStatus::Closed
-            ? BatchStatus::Closed
-            : BatchStatus::Open;
-    }
-
-    public function effectiveStatus(): BatchStatus
-    {
-        if ($this->manualStatus() === BatchStatus::Closed) {
-            return BatchStatus::Closed;
-        }
-
-        $items = $this->relationLoaded('items')
-            ? $this->items
-            : $this->items()->get();
-
-        if ($items->isNotEmpty() && $items->every(
-            fn (BatchItem $item): bool => (float) $item->qty_in_kg <= 0
-        )) {
-            return BatchStatus::SoldOut;
-        }
-
-        return BatchStatus::Open;
-    }
-
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id');
@@ -101,34 +75,6 @@ class Batch extends Model
     public function getFormattedDateAttribute(): string
     {
         return $this->batch_date->format('d M Y, h:i A');
-    }
-
-    /**
-     * @return array{value: string, label: string, class: string}
-     */
-    public function getStatusPresentationAttribute(): array
-    {
-        $status = $this->effectiveStatus();
-
-        return [
-            'value' => $status->value,
-            'label' => $status->value,
-            'class' => $status->pillClass(),
-        ];
-    }
-
-    /**
-     * @return array{value: string, label: string, class: string}
-     */
-    public function getManualStatusPresentationAttribute(): array
-    {
-        $status = $this->manualStatus();
-
-        return [
-            'value' => $status->value,
-            'label' => $status->value,
-            'class' => $status->pillClass(),
-        ];
     }
 
     /**

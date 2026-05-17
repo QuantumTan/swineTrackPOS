@@ -125,8 +125,6 @@ class PosController extends Controller
                             throw new \RuntimeException('Insufficient batch stock for one or more cart items.');
                         }
                     }
-
-                    $this->syncBatchStatusFromItems($batch->batch_id);
                 }
 
                 $saleId = DB::table('sale')->insertGetId([
@@ -256,36 +254,6 @@ class PosController extends Controller
             ->where('TRIGGER_NAME', 'trg_sale_item_after_insert')
             ->where('ACTION_STATEMENT', 'like', '%batch_item%')
             ->exists();
-    }
-
-    private function syncBatchStatusFromItems(int $batchId): void
-    {
-        $batch = Batch::query()
-            ->whereKey($batchId)
-            ->first();
-
-        if (! $batch || $batch->batch_status === BatchStatus::Closed) {
-            return;
-        }
-
-        $hasItems = BatchItem::query()
-            ->where('batch_id', $batchId)
-            ->exists();
-
-        if (! $hasItems) {
-            return;
-        }
-
-        $hasRemainingQuantity = BatchItem::query()
-            ->where('batch_id', $batchId)
-            ->where('qty_in_kg', '>', 0)
-            ->exists();
-
-        $batch->forceFill([
-            'batch_status' => $hasRemainingQuantity
-                ? BatchStatus::Open->value
-                : BatchStatus::SoldOut->value,
-        ])->save();
     }
 
     /**

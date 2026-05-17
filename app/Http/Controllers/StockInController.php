@@ -39,15 +39,9 @@ class StockInController extends Controller
                 if ($filters['batch_status'] === 'closed') {
                     $query->where('batch_status', 'Closed');
                 } elseif ($filters['batch_status'] === 'sold_out') {
-                    $query->where('batch_status', '!=', 'Closed')
-                        ->whereHas('items')
-                        ->whereDoesntHave('items', fn ($itemQuery) => $itemQuery->where('qty_in_kg', '>', 0));
+                    $query->where('batch_status', 'Sold Out');
                 } elseif ($filters['batch_status'] === 'open') {
-                    $query->where('batch_status', '!=', 'Closed')
-                        ->where(function ($openQuery) {
-                            $openQuery->whereDoesntHave('items')
-                                ->orWhereHas('items', fn ($itemQuery) => $itemQuery->where('qty_in_kg', '>', 0));
-                        });
+                    $query->where('batch_status', 'Open');
                 }
             })
             ->orderByDesc('batch_date')

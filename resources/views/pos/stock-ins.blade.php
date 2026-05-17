@@ -256,8 +256,8 @@
                             <td>{{ $stockIn->formatted_date }}</td>
                             <td>
                                 @include('pos.partials.status-pill', [
-                                    'label' => $stockIn->status_presentation['label'],
-                                    'type' => $stockIn->status_presentation['class'],
+                                    'label' => $stockIn->batch_status->value,
+                                    'type' => $stockIn->batch_status->pillClass(),
                                 ])
                             </td>
                             <td>
@@ -304,8 +304,8 @@
                 <div class="col-md-6">
                     <div class="modal-detail-label">Batch Status</div>
                     @include('pos.partials.status-pill', [
-                        'label' => $stockIn->status_presentation['label'],
-                        'type' => $stockIn->status_presentation['class'],
+                        'label' => $stockIn->batch_status->value,
+                        'type' => $stockIn->batch_status->pillClass(),
                     ])
                 </div>
                 <div class="col-md-6">
@@ -362,7 +362,7 @@
                         <label class="form-label fw-semibold">Batch Status</label>
                         <select name="batch_status" class="form-select">
                             @foreach (\App\Enums\BatchStatus::manualValues() as $batchStatus)
-                                <option value="{{ $batchStatus }}" @selected(old('batch_status', $stockIn->manual_status_presentation['value']) === $batchStatus)>{{ $batchStatus }}</option>
+                                <option value="{{ $batchStatus }}" @selected(old('batch_status', $stockIn->batch_status->value) === $batchStatus)>{{ $batchStatus }}</option>
                             @endforeach
                         </select>
                         <div class="form-text">"Sold Out" is automatic when all batch quantities reach zero. Use "Closed" only for a manual stop.</div>
