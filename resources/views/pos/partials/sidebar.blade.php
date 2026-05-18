@@ -9,7 +9,7 @@
         [
             'label' => 'Operations',
             'items' => [
-                // ['label' => 'Sales (POS)', 'route' => 'sales.index', 'icon' => 'bi-cart3'],
+                ['label' => 'Sales (POS)', 'route' => 'sales.index', 'icon' => 'bi-cart3'],
                 ['label' => 'Stock-In', 'route' => 'stock-ins.index', 'icon' => 'bi-arrow-down-circle'],
             ],
         ],
