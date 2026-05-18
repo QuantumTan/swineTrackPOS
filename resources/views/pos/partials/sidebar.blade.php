@@ -18,7 +18,7 @@
             'items' => [
                 ['label' => 'Products', 'route' => 'products.index', 'icon' => 'bi-box-seam'],
                 ['label' => 'Categories', 'route' => 'categories.index', 'icon' => 'bi-tags'],
-                ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'bi-truck'],
+                // ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'bi-truck'],
             ],
         ],
         [
@@ -26,7 +26,7 @@
             'items' => [
                 ['label' => 'Inventory', 'route' => 'inventory.index', 'icon' => 'bi-archive'],
                 ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'bi-file-earmark-text'],
-                ['label' => 'Sales Activity', 'route' => 'reports.sales-activity', 'icon' => 'bi-receipt'],
+                // ['label' => 'Sales Activity', 'route' => 'reports.sales-activity', 'icon' => 'bi-receipt'],
             ],
         ],
     ];
